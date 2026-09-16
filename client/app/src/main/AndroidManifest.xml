@@ -49,8 +49,13 @@
         <meta-data android:name="picovr.software.eye_tracking" android:value="1" />
         <meta-data android:name="picovr.software.face_tracking" android:value="true" />
 
+        <!-- Diagnostics panel, disabled by default: the VIVE system services track every
+             package with a launchable activity and force-stop the others whenever a VR app
+             gains focus, which would kill this service each time Virtual Desktop starts.
+             Enable temporarily with: adb shell pm enable dev.maverick.ftbridge/.MainActivity -->
         <activity
             android:name=".MainActivity"
+            android:enabled="false"
             android:exported="true"
             android:launchMode="singleTask">
             <intent-filter>

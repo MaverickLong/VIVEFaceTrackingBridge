@@ -39,11 +39,20 @@ No PC-side component is required: the headset sends the module's own wire format
 3. Start VRCFaceTracking on the PC, then use the headset normally. In VRChat the avatar's
    eyes and mouth follow yours through the ALVR module.
 
-Alternatively open the **FT Bridge** app on the headset, enter the PC address and tap Start.
-The app shows a live status (session state, sources, packets sent and how many carried changed
-values, i.e. fresh tracker samples). Because the headset only
-runs one app in the foreground at a time, the status panel is for setup and diagnostics; the
-service keeps running when you switch to another app.
+There is also a control panel (settings and a live status: session state, sources, packets
+sent and how many carried changed values, i.e. fresh tracker samples), but it is **disabled by
+default and only meant for diagnostics**. The VIVE system force-stops every other app that has
+a launchable activity whenever a VR app gains focus (its one-foreground-app rule), which would
+kill the service each time Virtual Desktop starts — so the app ships without an enabled
+activity. To use the panel temporarily:
+
+```
+adb shell pm enable dev.maverick.ftbridge/.MainActivity     # appears in the launcher
+adb shell pm disable dev.maverick.ftbridge/.MainActivity    # afterwards, then re-run provision.ps1
+```
+
+The service itself is monitored with `adb logcat -s ftbridge:*` (a status heartbeat every 5 s
+while the bridge runs).
 
 ## Settings
 

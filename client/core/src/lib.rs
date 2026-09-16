@@ -32,9 +32,12 @@ mod android {
             atomic::{AtomicBool, Ordering},
         },
         thread::{self, JoinHandle},
+        time::Duration,
     };
 
     const LOG_TAG: &str = "ftbridge";
+    // E.g. the OpenXR runtime is not up yet when the service autostarts at boot
+    const RETRY_DELAY: Duration = Duration::from_secs(5);
 
     static STATUS: Status = Status::new();
     static RUNNER: Mutex<Option<Runner>> = Mutex::new(None);
@@ -108,12 +111,8 @@ mod android {
         }
 
         STATUS.reset();
-        let config = match parse_target(&host, port) {
-            Ok(target) => Config {
-                target,
-                rate_hz,
-                frame_rate_hz,
-            },
+        let target = match parse_target(&host, port) {
+            Ok(target) => target,
             Err(e) => {
                 STATUS.set_error(&e);
                 return;
@@ -123,12 +122,22 @@ mod android {
         let stop = Arc::new(AtomicBool::new(false));
         let thread_stop = Arc::clone(&stop);
         let thread = thread::spawn(move || {
-            let result = panic::catch_unwind(|| bridge::run(config, &thread_stop, &STATUS));
+            while !thread_stop.load(Ordering::Relaxed) {
+                let config = Config {
+                    target,
+                    rate_hz,
+                    frame_rate_hz,
+                };
+                let result = panic::catch_unwind(|| bridge::run(config, &thread_stop, &STATUS));
 
-            match result {
-                Ok(Ok(())) => (),
-                Ok(Err(message)) => STATUS.set_error(&message),
-                Err(_) => STATUS.set_error("bridge thread panicked, see logcat"),
+                match result {
+                    Ok(Ok(())) => break,
+                    Ok(Err(message)) => STATUS.set_error(&message),
+                    Err(_) => STATUS.set_error("bridge thread panicked, see logcat"),
+                }
+
+                log::info!("retrying in {RETRY_DELAY:?}");
+                thread::sleep(RETRY_DELAY);
             }
         });
 

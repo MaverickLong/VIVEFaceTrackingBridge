@@ -22,7 +22,7 @@ mod android {
     use jni::{
         JNIEnv,
         objects::{GlobalRef, JClass, JObject, JString},
-        sys::{jfloat, jint, jstring},
+        sys::{jboolean, jfloat, jint, jstring},
     };
     use std::{
         net::{IpAddr, SocketAddr},
@@ -86,6 +86,7 @@ mod android {
         Ok(SocketAddr::new(ip, port))
     }
 
+    /// Returns true if the bridge is running afterwards (started now, or already running).
     #[unsafe(no_mangle)]
     pub extern "system" fn Java_dev_maverick_ftbridge_NativeCore_start(
         mut env: JNIEnv,
@@ -95,7 +96,7 @@ mod android {
         port: jint,
         rate_hz: jfloat,
         frame_rate_hz: jfloat,
-    ) {
+    ) -> jboolean {
         init_once(&mut env, &context);
 
         let host = env
@@ -105,9 +106,14 @@ mod android {
 
         // # Safety: the lock is only held for trivial operations, it cannot be poisoned
         let mut runner = RUNNER.lock().unwrap();
-        if runner.as_ref().is_some_and(|r| !r.thread.is_finished()) {
+        if let Some(active) = runner.as_ref().filter(|r| !r.thread.is_finished()) {
+            if active.stop.load(Ordering::Relaxed) {
+                log::info!("previous bridge thread still shutting down");
+                return jni::sys::JNI_FALSE;
+            }
+
             log::warn!("start requested while already running");
-            return;
+            return jni::sys::JNI_TRUE;
         }
 
         STATUS.reset();
@@ -115,7 +121,7 @@ mod android {
             Ok(target) => target,
             Err(e) => {
                 STATUS.set_error(&e);
-                return;
+                return jni::sys::JNI_FALSE;
             }
         };
 
@@ -142,6 +148,8 @@ mod android {
         });
 
         *runner = Some(Runner { stop, thread });
+
+        jni::sys::JNI_TRUE
     }
 
     #[unsafe(no_mangle)]

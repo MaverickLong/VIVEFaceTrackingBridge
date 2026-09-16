@@ -11,6 +11,9 @@ public final class Settings {
     // Focus Vision while Virtual Desktop streams: ~7% of one core at 10 Hz frames, ~10% at
     // 60 Hz, with the trackers polled at 60 Hz either way.
     public static final float DEFAULT_FRAME_RATE_HZ = 10f;
+    // Only run the bridge while this app is in the foreground (empty: always run). The VIVE
+    // runtime powers the trackers down anyway when no VR app is active.
+    public static final String DEFAULT_GATE_PACKAGE = "VirtualDesktop.Android";
 
     private static final String PREFERENCES_NAME = "ftbridge";
     private static final String KEY_HOST = "host";
@@ -18,6 +21,7 @@ public final class Settings {
     private static final String KEY_RATE = "rate_hz";
     private static final String KEY_AUTOSTART = "autostart";
     private static final String KEY_FRAME_RATE = "frame_rate_hz";
+    private static final String KEY_GATE_PACKAGE = "gate_package";
 
     private final SharedPreferences preferences;
 
@@ -45,13 +49,19 @@ public final class Settings {
         return preferences.getFloat(KEY_FRAME_RATE, DEFAULT_FRAME_RATE_HZ);
     }
 
-    public void save(String host, int port, float rateHz, boolean autostart, float frameRateHz) {
+    public String gatePackage() {
+        return preferences.getString(KEY_GATE_PACKAGE, DEFAULT_GATE_PACKAGE);
+    }
+
+    public void save(String host, int port, float rateHz, boolean autostart, float frameRateHz,
+                     String gatePackage) {
         preferences.edit()
                 .putString(KEY_HOST, host)
                 .putInt(KEY_PORT, port)
                 .putFloat(KEY_RATE, rateHz)
                 .putBoolean(KEY_AUTOSTART, autostart)
                 .putFloat(KEY_FRAME_RATE, frameRateHz)
+                .putString(KEY_GATE_PACKAGE, gatePackage == null ? "" : gatePackage.trim())
                 .apply();
     }
 }

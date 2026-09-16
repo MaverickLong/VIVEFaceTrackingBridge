@@ -33,9 +33,9 @@ No PC-side component is required: the headset sends the module's own wire format
    tools\provision.ps1 -PcAddress 192.168.1.10 -Autostart
    ```
 
-   This installs the APK, exempts it from battery optimization, saves the PC address and
-   starts the service. `-Autostart` makes it start after every boot. The USB cable is not
-   needed afterwards.
+   This installs the APK, exempts it from battery optimization, grants usage access (to detect
+   when Virtual Desktop is in the foreground), saves the PC address and starts the service.
+   `-Autostart` makes it start after every boot. The USB cable is not needed afterwards.
 3. Start VRCFaceTracking on the PC, then use the headset normally. In VRChat the avatar's
    eyes and mouth follow yours through the ALVR module.
 
@@ -52,6 +52,7 @@ service keeps running when you switch to another app.
 | PC address / port | – / 41463 | Where the VRCFT-ALVR module listens |
 | Poll/send rate | 60 Hz | The VIVE trackers sample at 60 Hz |
 | OpenXR frame rate | 10 Hz | Independent of the poll rate. The runtime only serves tracker data to a running session, which requires submitting (empty) frames; their rate does not affect the tracker samples. Fewer frames cost less CPU: ~7% of one core at 10 Hz, ~10% at 60 Hz on the Focus Vision. 0 disables frames (no data on VIVE). |
+| Only while app runs | `VirtualDesktop.Android` | The bridge (OpenXR session, polling) only runs while this package, or the FT Bridge panel, is in the foreground; empty runs it always. Needs usage access, which `provision.ps1` grants over adb (`appops set dev.maverick.ftbridge android:get_usage_stats allow`); without it the bridge runs always. The VIVE runtime powers the trackers down when no VR app is active anyway. |
 | Autostart | off | Start the service after boot |
 
 Everything can also be set over adb, e.g.:
@@ -59,7 +60,7 @@ Everything can also be set over adb, e.g.:
 ```
 adb shell am start-foreground-service -n dev.maverick.ftbridge/.TrackingService \
     -a dev.maverick.ftbridge.START --es host 192.168.1.10 --ei port 41463 \
-    --ef rate 60 --ef framerate 10 --ez autostart true
+    --ef rate 60 --ef framerate 10 --ez autostart true --es gate VirtualDesktop.Android
 adb shell am startservice -n dev.maverick.ftbridge/.TrackingService -a dev.maverick.ftbridge.STOP
 adb logcat -s ftbridge:*      # status heartbeat every 5 s
 ```

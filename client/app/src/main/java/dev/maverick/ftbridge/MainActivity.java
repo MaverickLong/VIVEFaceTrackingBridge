@@ -34,6 +34,7 @@ public final class MainActivity extends Activity {
     private EditText rateInput;
     private CheckBox autostartInput;
     private EditText frameRateInput;
+    private EditText gateInput;
     private TextView statusView;
 
     private final Runnable statusRefresh = new Runnable() {
@@ -65,6 +66,11 @@ public final class MainActivity extends Activity {
         layout.addView(label("Poll/send rate (Hz). The VIVE trackers sample at " + (int) Settings.DEFAULT_RATE_HZ));
         rateInput = input(String.valueOf((int) settings.rateHz()), InputType.TYPE_CLASS_NUMBER);
         layout.addView(rateInput);
+
+        layout.addView(label("Only run while this app is in the foreground (package name; empty = always). "
+                + "Needs usage access, granted by tools/provision.ps1"));
+        gateInput = input(settings.gatePackage(), InputType.TYPE_CLASS_TEXT);
+        layout.addView(gateInput);
 
         autostartInput = new CheckBox(this);
         autostartInput.setText("Start automatically after boot");
@@ -132,7 +138,8 @@ public final class MainActivity extends Activity {
             return;
         }
 
-        new Settings(this).save(host, port, rateHz, autostartInput.isChecked(), frameRateHz);
+        new Settings(this).save(host, port, rateHz, autostartInput.isChecked(), frameRateHz,
+                gateInput.getText().toString());
         TrackingService.start(this);
     }
 
@@ -165,7 +172,8 @@ public final class MainActivity extends Activity {
             JSONObject status = new JSONObject(json);
             String error = status.optString("last_error");
 
-            return "phase:      " + status.optString("phase") + "\n"
+            return "gate:       " + TrackingService.gateStatus + "\n"
+                    + "phase:      " + status.optString("phase") + "\n"
                     + "session:    " + status.optString("session_state") + "\n"
                     + "runtime:    " + status.optString("runtime_name") + "\n"
                     + "sources:    " + status.optString("sources") + "\n"

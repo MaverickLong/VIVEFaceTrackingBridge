@@ -16,8 +16,10 @@ public final class NativeCore {
      * @param context     passed to the OpenXR runtime as the application activity
      * @param frameRateHz rate of the empty frames keeping the session running, 0 for none
      *                    (see core/src/bridge.rs)
+     * @return true if the bridge is running afterwards; false if a previous instance is still
+     *         shutting down (retry later) or the arguments were rejected (see status())
      */
-    public static native void start(Context context, String host, int port, float rateHz, float frameRateHz);
+    public static native boolean start(Context context, String host, int port, float rateHz, float frameRateHz);
 
     /** Requests the bridge thread to stop; returns immediately. */
     public static native void stop();

@@ -25,6 +25,9 @@ public final class TrackingService extends Service {
     private static final String CHANNEL_ID = "bridge";
     private static final int NOTIFICATION_ID = 1;
 
+    // The OpenXR runtime keeps a reference to this object for the process lifetime
+    private static HeadlessActivity xrActivity;
+
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
 
@@ -58,7 +61,10 @@ public final class TrackingService extends Service {
         Settings settings = new Settings(this);
         Log.i(TAG, "starting bridge -> " + settings.host() + ":" + settings.port()
                 + " @ " + settings.rateHz() + " Hz");
-        NativeCore.start(getApplicationContext(), settings.host(), settings.port(), settings.rateHz());
+        if (xrActivity == null) {
+            xrActivity = new HeadlessActivity(this);
+        }
+        NativeCore.start(xrActivity, settings.host(), settings.port(), settings.rateHz());
 
         return START_STICKY;
     }

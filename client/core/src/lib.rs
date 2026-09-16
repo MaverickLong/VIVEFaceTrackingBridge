@@ -91,6 +91,7 @@ mod android {
         host: JString,
         port: jint,
         rate_hz: jfloat,
+        frame_rate_hz: jfloat,
     ) {
         init_once(&mut env, &context);
 
@@ -108,7 +109,11 @@ mod android {
 
         STATUS.reset();
         let config = match parse_target(&host, port) {
-            Ok(target) => Config { target, rate_hz },
+            Ok(target) => Config {
+                target,
+                rate_hz,
+                frame_rate_hz,
+            },
             Err(e) => {
                 STATUS.set_error(&e);
                 return;

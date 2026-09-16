@@ -5,13 +5,18 @@ import android.content.SharedPreferences;
 
 public final class Settings {
     public static final int DEFAULT_PORT = 0xA1F7;
-    public static final float DEFAULT_RATE_HZ = 90f;
+    // The VIVE eye and face trackers sample at 60 Hz
+    public static final float DEFAULT_RATE_HZ = 60f;
+    // Measured on the Focus Vision: ~5-10% of a core at 10 Hz vs ~64% at display rate (90 Hz),
+    // with identical tracker output
+    public static final float DEFAULT_FRAME_RATE_HZ = 10f;
 
     private static final String PREFERENCES_NAME = "ftbridge";
     private static final String KEY_HOST = "host";
     private static final String KEY_PORT = "port";
     private static final String KEY_RATE = "rate_hz";
     private static final String KEY_AUTOSTART = "autostart";
+    private static final String KEY_FRAME_RATE = "frame_rate_hz";
 
     private final SharedPreferences preferences;
 
@@ -35,12 +40,17 @@ public final class Settings {
         return preferences.getBoolean(KEY_AUTOSTART, false);
     }
 
-    public void save(String host, int port, float rateHz, boolean autostart) {
+    public float frameRateHz() {
+        return preferences.getFloat(KEY_FRAME_RATE, DEFAULT_FRAME_RATE_HZ);
+    }
+
+    public void save(String host, int port, float rateHz, boolean autostart, float frameRateHz) {
         preferences.edit()
                 .putString(KEY_HOST, host)
                 .putInt(KEY_PORT, port)
                 .putFloat(KEY_RATE, rateHz)
                 .putBoolean(KEY_AUTOSTART, autostart)
+                .putFloat(KEY_FRAME_RATE, frameRateHz)
                 .apply();
     }
 }

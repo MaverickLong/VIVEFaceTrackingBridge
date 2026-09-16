@@ -33,6 +33,7 @@ public final class MainActivity extends Activity {
     private EditText portInput;
     private EditText rateInput;
     private CheckBox autostartInput;
+    private EditText frameRateInput;
     private TextView statusView;
 
     private final Runnable statusRefresh = new Runnable() {
@@ -61,7 +62,7 @@ public final class MainActivity extends Activity {
         portInput = input(String.valueOf(settings.port()), InputType.TYPE_CLASS_NUMBER);
         layout.addView(portInput);
 
-        layout.addView(label("Send rate (Hz)"));
+        layout.addView(label("Poll/send rate (Hz). The VIVE trackers sample at " + (int) Settings.DEFAULT_RATE_HZ));
         rateInput = input(String.valueOf((int) settings.rateHz()), InputType.TYPE_CLASS_NUMBER);
         layout.addView(rateInput);
 
@@ -69,6 +70,11 @@ public final class MainActivity extends Activity {
         autostartInput.setText("Start automatically after boot");
         autostartInput.setChecked(settings.autostart());
         layout.addView(autostartInput);
+
+        layout.addView(label("OpenXR frame rate (Hz). Keeps the session running: lower = less CPU, "
+                + "0 = no frames (no tracker data on VIVE). Default " + (int) Settings.DEFAULT_FRAME_RATE_HZ));
+        frameRateInput = input(String.valueOf((int) settings.frameRateHz()), InputType.TYPE_CLASS_NUMBER);
+        layout.addView(frameRateInput);
 
         LinearLayout buttons = new LinearLayout(this);
         buttons.setOrientation(LinearLayout.HORIZONTAL);
@@ -116,15 +122,17 @@ public final class MainActivity extends Activity {
 
         int port;
         float rateHz;
+        float frameRateHz;
         try {
             port = Integer.parseInt(portInput.getText().toString().trim());
             rateHz = Float.parseFloat(rateInput.getText().toString().trim());
+            frameRateHz = Float.parseFloat(frameRateInput.getText().toString().trim());
         } catch (NumberFormatException e) {
             Toast.makeText(this, "Invalid port or rate", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        new Settings(this).save(host, port, rateHz, autostartInput.isChecked());
+        new Settings(this).save(host, port, rateHz, autostartInput.isChecked(), frameRateHz);
         TrackingService.start(this);
     }
 

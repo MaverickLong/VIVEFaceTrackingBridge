@@ -29,6 +29,7 @@ public final class TrackingService extends Service {
     public static final String EXTRA_PORT = "port";
     public static final String EXTRA_RATE_HZ = "rate";
     public static final String EXTRA_AUTOSTART = "autostart";
+    public static final String EXTRA_FRAME_RATE_HZ = "framerate";
 
     private static final String TAG = "ftbridge";
     private static final String CHANNEL_ID = "bridge";
@@ -73,14 +74,16 @@ public final class TrackingService extends Service {
                     intent.getStringExtra(EXTRA_HOST),
                     intent.getIntExtra(EXTRA_PORT, settings.port()),
                     intent.getFloatExtra(EXTRA_RATE_HZ, settings.rateHz()),
-                    intent.getBooleanExtra(EXTRA_AUTOSTART, settings.autostart()));
+                    intent.getBooleanExtra(EXTRA_AUTOSTART, settings.autostart()),
+                    intent.getFloatExtra(EXTRA_FRAME_RATE_HZ, settings.frameRateHz()));
         }
         Log.i(TAG, "starting bridge -> " + settings.host() + ":" + settings.port()
-                + " @ " + settings.rateHz() + " Hz");
+                + " @ " + settings.rateHz() + " Hz, frame rate " + settings.frameRateHz() + " Hz");
         if (xrActivity == null) {
             xrActivity = new HeadlessActivity(this);
         }
-        NativeCore.start(xrActivity, settings.host(), settings.port(), settings.rateHz());
+        NativeCore.start(xrActivity, settings.host(), settings.port(), settings.rateHz(),
+                settings.frameRateHz());
 
         return START_STICKY;
     }

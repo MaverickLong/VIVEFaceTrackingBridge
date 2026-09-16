@@ -27,6 +27,11 @@ const SYSTEM_PROPERTY_VALUE_MAX: usize = 92;
 pub struct Config {
     pub target: SocketAddr,
     pub rate_hz: f32,
+    // Rate of the empty frames submitted to keep the session running. The Wave runtime only
+    // activates the facial trackers for a running session, but does not need frames at
+    // display rate: each frame costs runtime CPU, so this is decoupled from the poll rate.
+    // 0 disables the frame loop and leaves the session in READY.
+    pub frame_rate_hz: f32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -220,8 +225,11 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
 
     status.set_phase("running");
     let send_interval = Duration::from_secs_f32(1.0 / config.rate_hz.max(1.0));
+    let frame_interval =
+        (config.frame_rate_hz > 0.0).then(|| Duration::from_secs_f32(1.0 / config.frame_rate_hz));
     let mut packet_buffer = vec![];
-    let mut last_send = Instant::now() - send_interval;
+    let mut next_send = Instant::now();
+    let mut last_frame = Instant::now();
     let mut last_heartbeat = Instant::now();
     let mut event_storage = xr::EventDataBuffer::new();
     let mut session_running = false;
@@ -243,11 +251,14 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
                     status.set_session_state(session_state_name(state));
 
                     match state {
-                        xr::SessionState::READY => {
+                        xr::SessionState::READY if frame_interval.is_some() => {
                             session
                                 .begin(xr::ViewConfigurationType::PRIMARY_STEREO)
                                 .map_err(|e| format!("xrBeginSession failed: {e}"))?;
                             session_running = true;
+                        }
+                        xr::SessionState::READY => {
+                            log::info!("frame loop disabled, session stays READY");
                         }
                         xr::SessionState::STOPPING => {
                             session.end().ok();
@@ -275,7 +286,11 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
             }
         }
 
-        let poll_time = if session_running {
+        let frame_due = session_running
+            && frame_interval.is_some_and(|interval| last_frame.elapsed() >= interval);
+        let poll_time = if frame_due {
+            last_frame = Instant::now();
+
             let frame_state = frame_waiter
                 .wait()
                 .map_err(|e| format!("xrWaitFrame failed: {e}"))?;
@@ -288,7 +303,13 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
 
             frame_state.predicted_display_time
         } else {
-            thread::sleep(send_interval.min(EVENT_POLL_IDLE_INTERVAL));
+            // Sleep until the next send is due, but wake up regularly to poll events
+            let wait = next_send
+                .saturating_duration_since(Instant::now())
+                .min(EVENT_POLL_IDLE_INTERVAL);
+            if !wait.is_zero() {
+                thread::sleep(wait);
+            }
 
             match xr_now(&instance) {
                 Some(time) => time,
@@ -296,10 +317,16 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
             }
         };
 
-        if last_send.elapsed() < send_interval {
+        let now = Instant::now();
+        if now < next_send {
             continue;
         }
-        last_send = Instant::now();
+        // Deadline based pacing keeps the average rate exact; if we fell behind by more than one
+        // interval (e.g. a long xrWaitFrame) skip ahead instead of bursting
+        next_send += send_interval;
+        if next_send < now {
+            next_send = now + send_interval;
+        }
 
         let face_data = sources.get_face_data(&session, &view_reference_space, poll_time);
         if ftbridge_protocol::encode_vrcft_packet(&face_data, &mut packet_buffer) {

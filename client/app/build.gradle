@@ -37,4 +37,10 @@ android {
             useLegacyPackaging = true
         }
     }
+
+    lint {
+        // Not distributed through Google Play; targetSdk 31 is deliberate (Android 12 headsets,
+        // no notification permission prompt)
+        disable 'ExpiredTargetSdkVersion'
+    }
 }

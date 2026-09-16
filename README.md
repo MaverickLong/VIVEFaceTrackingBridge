@@ -26,9 +26,9 @@ No PC-side component is required: the headset sends the module's own wire format
 
 ## Install (Windows, no technical knowledge needed)
 
-1. Download `FTBridge-<version>-windows.zip` from the
-   [Releases](https://github.com/MaverickLong/VIVEFaceTrackingBridge/releases) page (the
-   `latest` pre-release is built from the newest commit) and unzip it.
+1. Download `FTBridge-<version>-windows.zip` from the latest
+   [release](https://github.com/MaverickLong/VIVEFaceTrackingBridge/releases/latest) and unzip
+   it.
 2. Enable USB debugging on the headset (VIVE Manager app → headset → Developer mode) and
    connect it over USB.
 3. Double-click `Setup.cmd`. It fetches adb from Google if needed, waits for the headset,
@@ -107,8 +107,16 @@ cargo build --release -p ftbridge_cli                      # optional diagnostic
 ### Releases (CI)
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) builds everything on every
-push to `main` and publishes it as the rolling `latest` pre-release (the zip with `Setup.cmd`
-plus the bare APK); pushing a `v*` tag publishes a regular release under that tag.
+push and pull request and uploads the package (the zip with `Setup.cmd` plus the bare APK) as
+a workflow artifact. A GitHub Release is published only from a version tag:
+
+1. Bump the version in `client/app/build.gradle` (`versionName`) and `Cargo.toml`
+   (`[workspace.package] version`) to the same value, e.g. `0.2.0`.
+2. Commit (`chore: release v0.2.0`), tag it `v0.2.0` and push the tag:
+   `git tag v0.2.0 && git push origin main v0.2.0`.
+
+CI refuses tags whose version differs from the two files. `versionCode` is derived from
+`versionName`, so every release installs as an upgrade on the headset.
 
 Release builds are signed with a keystore taken from repository secrets
 (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,

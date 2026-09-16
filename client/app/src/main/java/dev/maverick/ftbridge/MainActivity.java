@@ -170,7 +170,8 @@ public final class MainActivity extends Activity {
                     + "runtime:    " + status.optString("runtime_name") + "\n"
                     + "sources:    " + status.optString("sources") + "\n"
                     + "packets:    " + status.optLong("packets_sent")
-                    + " (failed " + status.optLong("sends_failed")
+                    + " (changed " + status.optLong("changed_packets")
+                    + ", failed " + status.optLong("sends_failed")
                     + ", idle polls " + status.optLong("idle_polls") + ")\n"
                     + "last data:  " + status.optString("last_segments") + "\n"
                     + (error.isEmpty() ? "" : "error:      " + error + "\n");

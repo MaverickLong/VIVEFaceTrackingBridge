@@ -228,6 +228,7 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
     let frame_interval =
         (config.frame_rate_hz > 0.0).then(|| Duration::from_secs_f32(1.0 / config.frame_rate_hz));
     let mut packet_buffer = vec![];
+    let mut previous_packet = vec![];
     let mut next_send = Instant::now();
     let mut last_frame = Instant::now();
     let mut last_heartbeat = Instant::now();
@@ -330,8 +331,11 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
 
         let face_data = sources.get_face_data(&session, &view_reference_space, poll_time);
         if ftbridge_protocol::encode_vrcft_packet(&face_data, &mut packet_buffer) {
+            let changed = packet_buffer != previous_packet;
+            previous_packet.clone_from(&packet_buffer);
+
             match socket.send_to(&packet_buffer, config.target) {
-                Ok(_) => status.record_packet(&segments_summary(&packet_buffer)),
+                Ok(_) => status.record_packet(&segments_summary(&packet_buffer), changed),
                 Err(_) => status.record_send_failure(),
             }
         } else {

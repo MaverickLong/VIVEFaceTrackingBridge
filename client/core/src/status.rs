@@ -9,6 +9,8 @@ struct StatusInner {
     runtime_name: String,
     sources: String,
     packets_sent: u64,
+    // Packets whose values differed from the previous one: fresh tracker samples
+    changed_packets: u64,
     sends_failed: u64,
     idle_polls: u64,
     last_segments: String,
@@ -28,6 +30,7 @@ impl Status {
                 runtime_name: String::new(),
                 sources: String::new(),
                 packets_sent: 0,
+                changed_packets: 0,
                 sends_failed: 0,
                 idle_polls: 0,
                 last_segments: String::new(),
@@ -62,9 +65,10 @@ impl Status {
         self.update(|inner| inner.sources = sources.into());
     }
 
-    pub fn record_packet(&self, segments: &str) {
+    pub fn record_packet(&self, segments: &str, changed: bool) {
         self.update(|inner| {
             inner.packets_sent += 1;
+            inner.changed_packets += u64::from(changed);
             inner.last_segments = segments.into();
         });
     }
@@ -95,7 +99,8 @@ impl Status {
         format!(
             concat!(
                 "{{\"phase\":\"{}\",\"session_state\":\"{}\",\"runtime_name\":\"{}\",",
-                "\"sources\":\"{}\",\"packets_sent\":{},\"sends_failed\":{},\"idle_polls\":{},",
+                "\"sources\":\"{}\",\"packets_sent\":{},\"changed_packets\":{},",
+                "\"sends_failed\":{},\"idle_polls\":{},",
                 "\"last_segments\":\"{}\",\"last_error\":\"{}\"}}"
             ),
             escape_json(&inner.phase),
@@ -103,6 +108,7 @@ impl Status {
             escape_json(&inner.runtime_name),
             escape_json(&inner.sources),
             inner.packets_sent,
+            inner.changed_packets,
             inner.sends_failed,
             inner.idle_polls,
             escape_json(&inner.last_segments),

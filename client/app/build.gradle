@@ -2,6 +2,10 @@ plugins {
     id 'com.android.application'
 }
 
+// Release signing key from the environment (CI secrets, see tools/make-keystore.ps1);
+// without it the debug key is used so local builds stay installable
+def releaseKeystore = System.getenv('FTBRIDGE_KEYSTORE')
+
 android {
     namespace 'dev.maverick.ftbridge'
     compileSdk 31
@@ -19,10 +23,21 @@ android {
         }
     }
 
+    signingConfigs {
+        if (releaseKeystore) {
+            release {
+                storeFile file(releaseKeystore)
+                storePassword System.getenv('FTBRIDGE_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('FTBRIDGE_KEY_ALIAS')
+                keyPassword System.getenv('FTBRIDGE_KEY_PASSWORD')
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig signingConfigs.debug
+            signingConfig releaseKeystore ? signingConfigs.release : signingConfigs.debug
         }
     }
 

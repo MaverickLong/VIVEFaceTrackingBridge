@@ -19,3 +19,22 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+--------------------------------------------------------------------------
+
+ACKNOWLEDGMENTS
+
+This project is an independent reimplementation inspired by, and partially
+derived from, ALVR (https://github.com/alvr-org/ALVR):
+
+    Copyright (c) 2018-2019 polygraphene
+    Copyright (c) 2020-2024 alvr-org
+    Licensed under the MIT License.
+
+In particular, the OpenXR face/eye tracking extension handling and the
+VRCFT sink wire format are based on ALVR's client and server code.
+
+This project interoperates with the VRCFT-ALVR module for VRCFaceTracking
+(https://github.com/alvr-org/VRCFT-ALVR), licensed under the Apache License,
+Version 2.0. No code from VRCFT-ALVR is included in this project; only its
+network protocol is implemented for compatibility.

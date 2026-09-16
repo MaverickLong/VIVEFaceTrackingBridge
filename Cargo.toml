@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["common/protocol"]
+members = ["common/protocol", "tools/vrcft-cli"]
 
 [workspace.package]
 version = "0.1.0"

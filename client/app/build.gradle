@@ -15,8 +15,10 @@ android {
         applicationId 'dev.maverick.ftbridge'
         minSdk 29
         targetSdk 31
-        versionCode 1
+        // Keep in sync with the workspace version in Cargo.toml; releases are tagged v<versionName>
         versionName '0.1.0'
+        // Derived from versionName (major.minor.patch) so every release installs as an upgrade
+        versionCode versionName.tokenize('.').collect { it as Integer }.inject(0) { acc, part -> acc * 100 + part }
 
         ndk {
             abiFilters 'arm64-v8a'

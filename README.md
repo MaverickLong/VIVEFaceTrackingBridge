@@ -40,7 +40,8 @@ No PC-side component is required: the headset sends the module's own wire format
    eyes and mouth follow yours through the ALVR module.
 
 Alternatively open the **FT Bridge** app on the headset, enter the PC address and tap Start.
-The app shows a live status (session state, sources, packets sent). Because the headset only
+The app shows a live status (session state, sources, packets sent and how many carried changed
+values, i.e. fresh tracker samples). Because the headset only
 runs one app in the foreground at a time, the status panel is for setup and diagnostics; the
 service keeps running when you switch to another app.
 
@@ -50,7 +51,7 @@ service keeps running when you switch to another app.
 |---|---|---|
 | PC address / port | – / 41463 | Where the VRCFT-ALVR module listens |
 | Poll/send rate | 60 Hz | The VIVE trackers sample at 60 Hz |
-| OpenXR frame rate | 60 Hz | The runtime only serves tracker data to a running session, which requires submitting (empty) frames. Fewer frames cost less CPU: ~10% of one core at 60 Hz, ~7% at 10 Hz on the Focus Vision. 0 disables frames (no data on VIVE). |
+| OpenXR frame rate | 10 Hz | Independent of the poll rate. The runtime only serves tracker data to a running session, which requires submitting (empty) frames; their rate does not affect the tracker samples. Fewer frames cost less CPU: ~7% of one core at 10 Hz, ~10% at 60 Hz on the Focus Vision. 0 disables frames (no data on VIVE). |
 | Autostart | off | Start the service after boot |
 
 Everything can also be set over adb, e.g.:
@@ -58,7 +59,7 @@ Everything can also be set over adb, e.g.:
 ```
 adb shell am start-foreground-service -n dev.maverick.ftbridge/.TrackingService \
     -a dev.maverick.ftbridge.START --es host 192.168.1.10 --ei port 41463 \
-    --ef rate 60 --ef framerate 60 --ez autostart true
+    --ef rate 60 --ef framerate 10 --ez autostart true
 adb shell am startservice -n dev.maverick.ftbridge/.TrackingService -a dev.maverick.ftbridge.STOP
 adb logcat -s ftbridge:*      # status heartbeat every 5 s
 ```

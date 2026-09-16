@@ -1,13 +1,13 @@
 # One-time setup of the bridge on a headset connected over adb: installs the APK, exempts
 # it from battery optimization, stores the PC address and starts the service.
 #
-#   tools\provision.ps1 -PcAddress 192.168.1.10 [-Autostart] [-Port 41463] [-Rate 60] [-FrameRate 60]
+#   tools\provision.ps1 -PcAddress 192.168.1.10 [-Autostart] [-Port 41463] [-Rate 60] [-FrameRate 10]
 
 param(
     [Parameter(Mandatory = $true)][string]$PcAddress,
     [int]$Port = 41463,
     [float]$Rate = 60,
-    [float]$FrameRate = 60,
+    [float]$FrameRate = 10,
     [switch]$Autostart,
     [string]$Apk = "",
     [string]$Adb = ""

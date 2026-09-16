@@ -1,16 +1,20 @@
-name: Build and release
+name: Build
+
+# Every push and pull request is built and the package uploaded as a workflow artifact.
+# A GitHub Release is published only from a version tag (v1.2.3), see README "Releases".
 
 on:
   push:
     branches: [main]
     tags: ['v*']
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: build-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -18,6 +22,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check that the tag matches the project version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          GRADLE_VERSION=$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" client/app/build.gradle)
+          CARGO_VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
+          echo "tag $TAG_VERSION, build.gradle $GRADLE_VERSION, Cargo.toml $CARGO_VERSION"
+          if [ "$TAG_VERSION" != "$GRADLE_VERSION" ] || [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match the versions in client/app/build.gradle and Cargo.toml"
+            exit 1
+          fi
 
       - uses: actions/setup-java@v4
         with:
@@ -73,7 +89,7 @@ jobs:
       - name: Package
         id: package
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+          if [ "${GITHUB_REF#refs/tags/v}" != "$GITHUB_REF" ]; then
             VERSION="${GITHUB_REF_NAME#v}"
           else
             VERSION="dev-${GITHUB_SHA::7}"
@@ -100,18 +116,21 @@ jobs:
             dist/*.apk
 
       - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.package.outputs.version }}
         run: |
-          FILES=(dist/FTBridge-$VERSION-windows.zip dist/FTBridge-$VERSION.apk)
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            gh release create "$GITHUB_REF_NAME" "${FILES[@]}" \
-              --title "FT Bridge $GITHUB_REF_NAME" --generate-notes
-          else
-            # Rolling pre-release that always points at the latest commit on main
-            gh release delete latest --cleanup-tag --yes || true
-            gh release create latest "${FILES[@]}" \
-              --target "$GITHUB_SHA" --prerelease \
-              --title "Latest build ($VERSION)" \
-              --notes "$(printf 'Automated build of commit %s.\n\n**Windows users:** download the zip, unzip it and double-click `Setup.cmd` with the headset connected over USB. See `README.txt` inside.\n\n`FTBridge-%s.apk` is the bare headset app for manual installation.' "$GITHUB_SHA" "$VERSION")"
+          cat > dist/notes.md <<EOF
+          ## Install (Windows)
+
+          1. Download **FTBridge-$VERSION-windows.zip** below and unzip it.
+          2. Enable USB debugging on the headset and connect it over USB.
+          3. Double-click **Setup.cmd** and follow the messages.
+
+          README.txt inside the zip has the full steps and troubleshooting.
+          FTBridge-$VERSION.apk is the bare headset app for manual installation.
+          EOF
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/FTBridge-$VERSION-windows.zip" "dist/FTBridge-$VERSION.apk" \
+            --title "FT Bridge $GITHUB_REF_NAME" --notes-file dist/notes.md

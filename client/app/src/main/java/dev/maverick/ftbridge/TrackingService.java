@@ -21,6 +21,15 @@ public final class TrackingService extends Service {
     public static final String ACTION_START = "dev.maverick.ftbridge.START";
     public static final String ACTION_STOP = "dev.maverick.ftbridge.STOP";
 
+    // Optional extras on ACTION_START, persisted to Settings. Lets the service be provisioned
+    // over adb without touching the UI, e.g.:
+    //   adb shell am start-foreground-service -n dev.maverick.ftbridge/.TrackingService \
+    //       -a dev.maverick.ftbridge.START --es host 192.168.1.10
+    public static final String EXTRA_HOST = "host";
+    public static final String EXTRA_PORT = "port";
+    public static final String EXTRA_RATE_HZ = "rate";
+    public static final String EXTRA_AUTOSTART = "autostart";
+
     private static final String TAG = "ftbridge";
     private static final String CHANNEL_ID = "bridge";
     private static final int NOTIFICATION_ID = 1;
@@ -59,6 +68,13 @@ public final class TrackingService extends Service {
         acquireLocks();
 
         Settings settings = new Settings(this);
+        if (intent != null && intent.hasExtra(EXTRA_HOST)) {
+            settings.save(
+                    intent.getStringExtra(EXTRA_HOST),
+                    intent.getIntExtra(EXTRA_PORT, settings.port()),
+                    intent.getFloatExtra(EXTRA_RATE_HZ, settings.rateHz()),
+                    intent.getBooleanExtra(EXTRA_AUTOSTART, settings.autostart()));
+        }
         Log.i(TAG, "starting bridge -> " + settings.host() + ":" + settings.port()
                 + " @ " + settings.rateHz() + " Hz");
         if (xrActivity == null) {

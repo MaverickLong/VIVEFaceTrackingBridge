@@ -52,9 +52,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Exported only for provisioning over adb: DUMP is held by the shell and
+             system but is not obtainable by third-party apps. -->
         <service
             android:name=".TrackingService"
-            android:exported="false"
+            android:exported="true"
+            android:permission="android.permission.DUMP"
             android:stopWithTask="false" />
 
         <receiver

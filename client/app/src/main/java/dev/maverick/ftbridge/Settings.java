@@ -7,9 +7,9 @@ public final class Settings {
     public static final int DEFAULT_PORT = 0xA1F7;
     // The VIVE eye and face trackers sample at 60 Hz
     public static final float DEFAULT_RATE_HZ = 60f;
-    // Measured on the Focus Vision: ~5-10% of a core at 10 Hz vs ~64% at display rate (90 Hz),
-    // with identical tracker output
-    public static final float DEFAULT_FRAME_RATE_HZ = 10f;
+    // Matched to the trackers. Measured on the Focus Vision while Virtual Desktop streams:
+    // ~10% of one core at 60 Hz frames, ~7% at 10 Hz, with identical tracker output.
+    public static final float DEFAULT_FRAME_RATE_HZ = 60f;
 
     private static final String PREFERENCES_NAME = "ftbridge";
     private static final String KEY_HOST = "host";

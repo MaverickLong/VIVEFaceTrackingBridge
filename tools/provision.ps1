@@ -31,9 +31,24 @@ if (-not $Apk) {
 }
 if (-not (Test-Path $Apk)) { throw "APK not found, build it first (see README)" }
 
+# Start the adb server detached: spawned from a captured pipeline it would inherit the
+# pipeline's handles and keep it open until the server exits
+Start-Process -FilePath $Adb -ArgumentList "start-server" -WindowStyle Hidden -Wait
+
 Write-Host "Installing $Apk ..."
-& $Adb install -r $Apk
-if ($LASTEXITCODE -ne 0) { throw "adb install failed" }
+$installOutput = & $Adb install -r $Apk 2>&1 | Out-String
+if ($LASTEXITCODE -ne 0) {
+    if ($installOutput -match "INSTALL_FAILED_UPDATE_INCOMPATIBLE") {
+        # Installed build was signed with a different key (e.g. a debug-signed CI build);
+        # settings are re-applied below, so a reinstall loses nothing
+        Write-Host "Existing installation has a different signature, reinstalling ..."
+        & $Adb uninstall $package | Out-Null
+        & $Adb install $Apk | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "adb install failed after uninstall" }
+    } else {
+        throw "adb install failed: $installOutput"
+    }
+}
 
 Write-Host "Exempting from battery optimization ..."
 & $Adb shell dumpsys deviceidle whitelist "+$package" | Out-Null
@@ -44,6 +59,7 @@ Write-Host "Granting usage access (foreground app detection for gating) ..."
 $autostartValue = if ($Autostart) { "true" } else { "false" }
 $gateText = if ($GateApp) { "only while $GateApp runs" } else { "always" }
 Write-Host "Starting the service -> ${PcAddress}:$Port at $Rate Hz (frames $FrameRate Hz, $gateText, autostart $autostartValue) ..."
+& $Adb logcat -c
 if ($GateApp) {
     & $Adb shell am start-foreground-service -n "$package/.TrackingService" -a "$package.START" `
         --es host $PcAddress --ei port $Port --ef rate $Rate --ef framerate $FrameRate `
@@ -55,9 +71,16 @@ if ($GateApp) {
 }
 
 Start-Sleep -Seconds 8
+$processId = (& $Adb shell pidof $package | Out-String).Trim()
+if (-not $processId) {
+    throw "The service is not running; check with: adb logcat -s ftbridge:*"
+}
+Write-Host "Service is running."
 $heartbeat = & $Adb logcat -d -s "ftbridge:*" | Select-String -Pattern "heartbeat|error" | Select-Object -Last 1
 if ($heartbeat) {
     Write-Host "Status: $($heartbeat.Line)"
+} elseif ($GateApp) {
+    Write-Host "The bridge will start as soon as $GateApp is in the foreground on the headset."
 } else {
     Write-Host "No status yet; check with: adb logcat -s ftbridge:*"
 }

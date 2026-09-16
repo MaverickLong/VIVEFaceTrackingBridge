@@ -1,0 +1,14 @@
+platform-tools
+ALVR
+VRCFT-ALVR
+CLAUDE.md
+
+# Rust
+target/
+
+# Android / Gradle
+client/.gradle/
+client/build/
+client/app/build/
+client/local.properties
+client/app/src/main/jniLibs/

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="org.khronos.openxr.permission.OPENXR" />
+    <uses-permission android:name="org.khronos.openxr.permission.OPENXR_SYSTEM" />
+
+    <!-- Meta / Pico face tracking (harmless on other devices) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="com.oculus.permission.EYE_TRACKING" />
+    <uses-permission android:name="com.oculus.permission.FACE_TRACKING" />
+    <uses-permission android:name="com.picovr.permission.EYE_TRACKING" />
+    <uses-permission android:name="com.picovr.permission.FACE_TRACKING" />
+
+    <uses-feature android:name="android.hardware.vr.headtracking" android:required="false" />
+    <uses-feature android:name="wave.feature.eyetracking" android:required="false" />
+    <uses-feature android:name="wave.feature.lipexpression" android:required="false" />
+    <uses-feature android:name="oculus.software.eye_tracking" android:required="false" />
+    <uses-feature android:name="oculus.software.face_tracking" android:required="false" />
+
+    <!-- Needed on Android 11+ for the OpenXR loader to discover the runtime broker -->
+    <queries>
+        <intent>
+            <action android:name="org.khronos.openxr.OpenXRRuntimeService" />
+        </intent>
+        <provider android:authorities="org.khronos.openxr.runtime_broker;org.khronos.openxr.system_runtime_broker" />
+    </queries>
+
+    <application
+        android:label="FT Bridge"
+        android:allowBackup="false"
+        android:theme="@android:style/Theme.DeviceDefault">
+
+        <meta-data android:name="minWaveSDKVersion" android:value="1" />
+        <meta-data android:name="com.oculus.supportedDevices" android:value="all" />
+        <meta-data android:name="picovr.software.eye_tracking" android:value="1" />
+        <meta-data android:name="picovr.software.face_tracking" android:value="true" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".TrackingService"
+            android:exported="false"
+            android:stopWithTask="false" />
+
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

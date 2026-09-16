@@ -24,20 +24,31 @@ No PC-side component is required: the headset sends the module's own wire format
   (it normally asks on first start).
 - Headset and PC on the same network.
 
-## Install and set up (one-time, over adb)
+## Install (Windows, no technical knowledge needed)
 
-1. Build or download `app-release.apk` (see Building).
-2. Connect the headset over USB with developer mode enabled and run:
-
-   ```powershell
-   tools\provision.ps1 -PcAddress 192.168.1.10 -Autostart
-   ```
-
-   This installs the APK, exempts it from battery optimization, grants usage access (to detect
-   when Virtual Desktop is in the foreground), saves the PC address and starts the service.
-   `-Autostart` makes it start after every boot. The USB cable is not needed afterwards.
-3. Start VRCFaceTracking on the PC, then use the headset normally. In VRChat the avatar's
+1. Download `FTBridge-<version>-windows.zip` from the
+   [Releases](https://github.com/MaverickLong/VIVEFaceTrackingBridge/releases) page (the
+   `latest` pre-release is built from the newest commit) and unzip it.
+2. Enable USB debugging on the headset (VIVE Manager app → headset → Developer mode) and
+   connect it over USB.
+3. Double-click `Setup.cmd`. It fetches adb from Google if needed, waits for the headset,
+   detects this PC's address, installs the app, exempts it from battery optimization, grants
+   usage access (to detect when Virtual Desktop is in the foreground), enables autostart and
+   starts the service. Unplug afterwards; the cable is only needed for setup.
+4. Start VRCFaceTracking on the PC, then use the headset normally. In VRChat the avatar's
    eyes and mouth follow yours through the ALVR module.
+
+`README.txt` inside the zip has the same steps plus troubleshooting.
+
+### Manual setup (developers)
+
+With adb on the PC and a built APK:
+
+```powershell
+tools\provision.ps1 -PcAddress 192.168.1.10 -Autostart
+```
+
+This does everything `Setup.cmd` does except fetching adb and detecting the address.
 
 There is also a control panel (settings and a live status: session state, sources, packets
 sent and how many carried changed values, i.e. fresh tracker samples), but it is **disabled by
@@ -92,6 +103,18 @@ cargo build --release -p ftbridge_cli                      # optional diagnostic
 ```
 
 `cargo test` runs the protocol tests on the host.
+
+### Releases (CI)
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml) builds everything on every
+push to `main` and publishes it as the rolling `latest` pre-release (the zip with `Setup.cmd`
+plus the bare APK); pushing a `v*` tag publishes a regular release under that tag.
+
+Release builds are signed with a keystore taken from repository secrets
+(`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+`ANDROID_KEY_PASSWORD`); `tools\make-keystore.ps1` creates one and prints what to set. Without
+the secrets each build is signed with a fresh debug key, and `Setup.cmd` reinstalls the app
+when the signature changed (settings are re-applied, nothing is lost).
 
 ## Diagnostics
 

@@ -21,6 +21,7 @@ const LOADER_FILE_NAME: &str = "libopenxr_loader.so";
 const LEGACY_OPENXR_VERSION: xr::Version = xr::Version::new(1, 0, 34);
 const CURRENT_OPENXR_VERSION: xr::Version = xr::Version::new(1, 1, 36);
 const EVENT_POLL_IDLE_INTERVAL: Duration = Duration::from_millis(100);
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 const SYSTEM_PROPERTY_VALUE_MAX: usize = 92;
 
 pub struct Config {
@@ -221,10 +222,16 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
     let send_interval = Duration::from_secs_f32(1.0 / config.rate_hz.max(1.0));
     let mut packet_buffer = vec![];
     let mut last_send = Instant::now() - send_interval;
+    let mut last_heartbeat = Instant::now();
     let mut event_storage = xr::EventDataBuffer::new();
     let mut session_running = false;
 
     while !stop.load(Ordering::Relaxed) {
+        if last_heartbeat.elapsed() >= HEARTBEAT_INTERVAL {
+            last_heartbeat = Instant::now();
+            log::info!("heartbeat: {}", status.to_json());
+        }
+
         while let Some(event) = instance
             .poll_event(&mut event_storage)
             .map_err(|e| format!("xrPollEvent failed: {e}"))?

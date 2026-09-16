@@ -16,7 +16,7 @@ android {
         minSdk 29
         targetSdk 31
         // Keep in sync with the workspace version in Cargo.toml; releases are tagged v<versionName>
-        versionName '0.1.0'
+        versionName '1.0.0'
         // Derived from versionName (major.minor.patch) so every release installs as an upgrade
         versionCode versionName.tokenize('.').collect { it as Integer }.inject(0) { acc, part -> acc * 100 + part }
 

@@ -35,23 +35,24 @@ import java.util.List;
 /**
  * Settings and live status of the FT Bridge service.
  *
- * This app is only the UI. The settings live in the service app and are read and written
- * through its control service, so whatever the PC setup provisioned is shown here and can be
+ * This app is only the UI. The settings live in the service app and are read
+ * and written
+ * through its control service, so whatever the PC setup provisioned is shown
+ * here and can be
  * changed. The service keeps running when this app is closed or killed.
  */
 public final class SettingsActivity extends Activity {
     private static final long STATUS_REFRESH_MS = 500;
-    private static final String NOT_INSTALLED_MESSAGE =
-            "The FT Bridge service app is not installed (or has a different signature). "
-                    + "Run the PC setup again.";
+    private static final String NOT_INSTALLED_MESSAGE = "The FT Bridge service app is not installed (or has a different signature). "
+            + "Run the PC setup again.";
 
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Messenger replyMessenger =
-            new Messenger(new Handler(Looper.getMainLooper(), this::handleReply));
+    private final Messenger replyMessenger = new Messenger(new Handler(Looper.getMainLooper(), this::handleReply));
     // Null while not connected to the control service
     private Messenger control;
     private boolean bindRequested;
-    // The fields are filled from the service once per connection, so edits are not overwritten
+    // The fields are filled from the service once per connection, so edits are not
+    // overwritten
     private boolean fieldsLoaded;
 
     private EditText hostInput;
@@ -114,8 +115,6 @@ public final class SettingsActivity extends Activity {
         layout.addView(eyeTrackingInput);
         faceTrackingInput = checkBox("Face tracking (mouth, jaw, cheeks, tongue)");
         layout.addView(faceTrackingInput);
-        layout.addView(label("The bridge does not touch the gaze data Virtual Desktop reads, which "
-                + "makes it compatible with VD Eye Tracking Foveated Encoding."));
 
         layout.addView(heading("When to forward"));
         alwaysForwardInput = checkBox("Always forward tracking data");
@@ -316,7 +315,10 @@ public final class SettingsActivity extends Activity {
         updateGateInputs();
     }
 
-    /** "Always forward" overrides the app list; the custom package only matters when selected. */
+    /**
+     * "Always forward" overrides the app list; the custom package only matters when
+     * selected.
+     */
     private void updateGateInputs() {
         boolean gated = !alwaysForwardInput.isChecked();
         virtualDesktopInput.setEnabled(gated);

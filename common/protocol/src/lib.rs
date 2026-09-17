@@ -17,7 +17,12 @@ pub const FB_FACE2_PREFIX: [u8; PREFIX_SIZE] = *b"Face2Fb\0";
 pub const BD_FACE_PREFIX: [u8; PREFIX_SIZE] = *b"FacePico";
 pub const HTC_EYE_PREFIX: [u8; PREFIX_SIZE] = *b"EyesHtc\0";
 pub const HTC_LIP_PREFIX: [u8; PREFIX_SIZE] = *b"LipHtc\0\0";
+// Not part of ALVR's format: XR_HTC_eye_tracker data, only understood by the VRCFT-ViveBridge
+// fork of the module. The stock module logs errors for unknown segments, so it is opt-in.
+pub const HTC_EYE_TRACKER_PREFIX: [u8; PREFIX_SIZE] = *b"EyeTrHtc";
 
+// Per eye: gaze valid, gaze quaternion (4), pupil diameter valid, pupil diameter in mm
+pub const HTC_EYE_TRACKER_VALUE_COUNT: usize = 14;
 pub const HTC_EYE_EXPRESSION_COUNT: usize = 14;
 pub const HTC_LIP_EXPRESSION_COUNT: usize = 37;
 pub const FB_FACE1_EXPRESSION_COUNT: usize = 63;
@@ -33,6 +38,7 @@ pub const SEGMENT_TABLE: &[([u8; PREFIX_SIZE], usize, &str)] = &[
     (BD_FACE_PREFIX, BD_FACE_EXPRESSION_COUNT, "FacePico"),
     (HTC_EYE_PREFIX, HTC_EYE_EXPRESSION_COUNT, "EyesHtc"),
     (HTC_LIP_PREFIX, HTC_LIP_EXPRESSION_COUNT, "LipHtc"),
+    (HTC_EYE_TRACKER_PREFIX, HTC_EYE_TRACKER_VALUE_COUNT, "EyeTrHtc"),
 ];
 
 #[derive(Clone, Debug)]
@@ -45,11 +51,21 @@ pub enum FaceExpressions {
     },
 }
 
+/// One eye of `XR_HTC_eye_tracker`. Both values are absent while the eye is closed.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct HtcEyeTrackerEye {
+    // Gaze orientation as [x, y, z, w], head relative, -Z forward
+    pub gaze: Option<[f32; 4]>,
+    pub pupil_diameter_mm: Option<f32>,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct FaceData {
     // Quaternions as [x, y, z, w]
     pub eyes_combined: Option<[f32; 4]>,
     pub eyes_social: [Option<[f32; 4]>; 2],
+    // Left, right. Sent as the EyeTrHtc segment, see HTC_EYE_TRACKER_PREFIX
+    pub htc_eye_tracker: Option<[HtcEyeTrackerEye; 2]>,
 
     pub face_expressions: Option<FaceExpressions>,
 }
@@ -80,6 +96,17 @@ pub fn encode_vrcft_packet(face_data: &FaceData, buffer: &mut Vec<u8>) -> bool {
         append_segment(buffer, EYES_QUAT_PREFIX, &values);
     } else if let Some(quat) = face_data.eyes_combined {
         append_segment(buffer, COMBINED_QUAT_PREFIX, &quat);
+    }
+
+    if let Some(eyes) = &face_data.htc_eye_tracker {
+        let mut values = Vec::with_capacity(HTC_EYE_TRACKER_VALUE_COUNT);
+        for eye in eyes {
+            values.push(if eye.gaze.is_some() { 1.0 } else { 0.0 });
+            values.extend(eye.gaze.unwrap_or([0.0, 0.0, 0.0, 1.0]));
+            values.push(if eye.pupil_diameter_mm.is_some() { 1.0 } else { 0.0 });
+            values.push(eye.pupil_diameter_mm.unwrap_or(0.0));
+        }
+        append_segment(buffer, HTC_EYE_TRACKER_PREFIX, &values);
     }
 
     match &face_data.face_expressions {
@@ -164,6 +191,7 @@ mod tests {
         let face_data = FaceData {
             eyes_combined: Some([0.0, 0.1, 0.2, 1.0]),
             eyes_social: [None, None],
+            htc_eye_tracker: None,
             face_expressions: Some(FaceExpressions::Htc {
                 eye: Some((0..14).map(|i| i as f32 * 0.1).collect()),
                 lip: Some((0..37).map(|i| i as f32 * 0.01).collect()),
@@ -187,6 +215,7 @@ mod tests {
         let face_data = FaceData {
             eyes_combined: Some([0.0; 4]),
             eyes_social: [Some([0.0, 0.0, 0.0, 1.0]), Some([0.0, 0.0, 0.0, 1.0])],
+            htc_eye_tracker: None,
             face_expressions: None,
         };
 
@@ -197,6 +226,32 @@ mod tests {
         assert_eq!(segments.len(), 1);
         assert_eq!(segments[0].name, "EyesQuat");
         assert_eq!(segments[0].values.len(), 8);
+    }
+
+    #[test]
+    fn htc_eye_tracker_segment_layout() {
+        let face_data = FaceData {
+            htc_eye_tracker: Some([
+                HtcEyeTrackerEye {
+                    gaze: Some([0.1, 0.2, 0.3, 0.9]),
+                    pupil_diameter_mm: Some(6.5),
+                },
+                // A closed eye: flags 0, identity quaternion, no diameter
+                HtcEyeTrackerEye::default(),
+            ]),
+            ..Default::default()
+        };
+
+        let mut buffer = vec![];
+        assert!(encode_vrcft_packet(&face_data, &mut buffer));
+
+        let segments = decode_vrcft_packet(&buffer).unwrap();
+        assert_eq!(segments.len(), 1);
+        assert_eq!(segments[0].name, "EyeTrHtc");
+        assert_eq!(
+            segments[0].values,
+            [1.0, 0.1, 0.2, 0.3, 0.9, 1.0, 6.5, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+        );
     }
 
     #[test]

@@ -1,11 +1,12 @@
 # FT Bridge - headset setup for Windows.
 #
-# Installs the FT Bridge app on a VIVE headset connected over USB and points it at this PC.
+# Installs the FT Bridge apps on a VIVE headset connected over USB and points them at this PC.
 # Double-click Setup.cmd to run it; no arguments are needed. Works with Windows PowerShell 5.1.
 
 param(
     [string]$PcAddress = "",
-    [string]$GateApp = "VirtualDesktop.Android",
+    # Streaming apps the bridge starts with; changeable later in the FT Bridge Settings app
+    [string[]]$GateApps = @("VirtualDesktop.Android"),
     [switch]$NoAutostart
 )
 
@@ -146,8 +147,9 @@ try {
     Write-Step "Installing and configuring FT Bridge on the headset ..."
     $provisionArgs = @{
         PcAddress = $PcAddress
-        GateApp = $GateApp
+        GateApps = $GateApps
         Apk = (Join-Path $here "FTBridge.apk")
+        SettingsApk = (Join-Path $here "FTBridgeSettings.apk")
         Adb = $adb
     }
     if (-not $NoAutostart) {
@@ -160,7 +162,8 @@ try {
     Write-Host "  1. Unplug the headset, put it on and start Virtual Desktop as usual."
     Write-Host "  2. Keep VRCFaceTracking (with the ALVR module) running on this PC."
     Write-Host "  The bridge starts by itself whenever Virtual Desktop runs, also after a reboot."
-    Write-Host "  Run this setup again if this PC gets a different network address."
+    Write-Host "  To change anything later (PC address, Steam Link, eye/face tracking), quit the"
+    Write-Host "  streaming app and open 'FT Bridge Settings' from the headset's app library."
 } catch {
     Write-Host ""
     Write-Host "Setup failed: $($_.Exception.Message)" -ForegroundColor Red

@@ -2,43 +2,67 @@
 
 A minimal, standalone Android app for VIVE (and other OpenXR) headsets that streams
 eye and face tracking data to a PC running [VRCFaceTracking](https://github.com/benaclejames/VRCFaceTracking)
-with the [VRCFT-ALVR module](https://github.com/alvr-org/VRCFT-ALVR). It runs as a
-background service, so it works alongside Virtual Desktop or any other streaming app.
+with the [VRCFT-ALVR module](https://github.com/alvr-org/VRCFT-ALVR). It runs as a background
+service, so it works alongside Virtual Desktop, Steam Link or any other streaming app.
+No PC-side component is required!
 
 The design and the OpenXR face tracking code are derived from [ALVR](https://github.com/alvr-org/ALVR)
-(see [LICENSE](LICENSE)); nothing else of ALVR is used.
-
-```
-headset: FT Bridge service ──(UDP, VRCFT-ALVR datagrams, Wi-Fi)──▶ PC: VRCFaceTracking + ALVR module ──▶ VRChat
-```
-
-No PC-side component is required: the headset sends the module's own wire format directly.
+(see [LICENSE](LICENSE)). Thank you to the ALVR team for their outstanding work!
 
 ## Requirements
 
-- Headset: VIVE Focus Vision (tested), or any OpenXR headset exposing
-  `XR_HTC_facial_tracking`, `XR_FB_face_tracking2`, `XR_FB_eye_tracking_social` or
-  `XR_BD_facial_simulation` (untested).
+- Compatible Headsets:
+
+| Headset                 | Compatibility                     |
+| ----------------------- | --------------------------------- |
+| VIVE Focus Vision       | ✅ (Tested)                       |
+| VIVE Focus 3            | ❓ (Untested but should work)     |
+| VIVE XR Elite           | ❓ (Untested but should work)     |
+| Pico 4 Pro / Enterprise | ❓ (Untested but API implemented) |
+
+In essence, any OpenXR headset exposing `XR_HTC_facial_tracking`, `XR_FB_face_tracking2`,
+`XR_FB_eye_tracking_social` or `XR_BD_facial_simulation` running Android 12 or higher should work.
+
 - PC: VRCFaceTracking with the VRCFT-ALVR module installed. The module listens on UDP
   port 41463 on all interfaces; Windows Firewall must allow inbound UDP to VRCFaceTracking
   (it normally asks on first start).
-- Headset and PC on the same network.
+- Headset and PC on the same network with a good router (you need this for VD anyways).
 
-## Install (Windows, no technical knowledge needed)
+## Installing with Windows
 
 1. Download `FTBridge-<version>-windows.zip` from the latest
    [release](https://github.com/MaverickLong/VIVEFaceTrackingBridge/releases/latest) and unzip
    it.
-2. Enable USB debugging on the headset (VIVE Manager app → headset → Developer mode) and
-   connect it over USB.
+2. Enable USB debugging on the headset settings and connect it over USB.
 3. Double-click `Setup.cmd`. It fetches adb from Google if needed, waits for the headset,
    detects this PC's address, installs the app, exempts it from battery optimization, grants
    usage access (to detect when Virtual Desktop is in the foreground), enables autostart and
    starts the service. Unplug afterwards; the cable is only needed for setup.
+   **This sets up the app for running with Virtual Desktop. See `Settings` below for
+   instructions for other streaming headsets.**
 4. Start VRCFaceTracking on the PC, then use the headset normally. In VRChat the avatar's
    eyes and mouth follow yours through the ALVR module.
 
 `README.txt` inside the zip has the same steps plus troubleshooting.
+
+## Important Notices
+
+1. **The FT bridge may not work when other apps have the eye / face tracking data.**
+   Please turn other apps' eye / face tracking (or eye-tracking based foveated encoding) off
+   when using this app to avoid potential compatibility issues.
+2. At current stage, the FT bridge does not have auto client discovery and relys on fixed IP address
+   set at installation time. You will need to plug in the headset and re-run `Setup.cmd` if the IP
+   changes (auto discovery is on the way)
+3. The mainstream [VRCFT-ALVR](https://github.com/alvr-org/VRCFT-ALVR) has bugs parsing some specific
+   mouth shapekeys. For now I recommend using
+   [this VRCFT-ALVR fork](https://github.com/AzumiYura/VRCFT-ALVR/tree/fix_htcftmapping).
+   (I will be making my own fork and building ready-to-use binaries soon)
+4. This is not official VIVE / Virtual Desktop / VRCFT software, there is strictly no affiliation
+   with any of the entities.
+
+## Developer Stuff
+
+Everything below is vibed docs and not reviewed by human.
 
 ### Manual setup (developers)
 
@@ -65,7 +89,7 @@ adb shell pm disable dev.maverick.ftbridge/.MainActivity    # afterwards, then r
 The service itself is monitored with `adb logcat -s ftbridge:*` (a status heartbeat every 5 s
 while the bridge runs).
 
-## Settings
+### Settings
 
 | Setting | Default | Notes |
 |---|---|---|
@@ -85,7 +109,7 @@ adb shell am startservice -n dev.maverick.ftbridge/.TrackingService -a dev.maver
 adb logcat -s ftbridge:*      # status heartbeat every 5 s
 ```
 
-## Building
+### Building
 
 Prerequisites (Windows; other hosts are similar):
 
@@ -124,7 +148,7 @@ Release builds are signed with a keystore taken from repository secrets
 the secrets each build is signed with a fresh debug key, and `Setup.cmd` reinstalls the app
 when the signature changed (settings are re-applied, nothing is lost).
 
-## Diagnostics
+### Diagnostics
 
 `vrcft-cli` speaks the module protocol from both ends:
 
@@ -136,7 +160,7 @@ vrcft-cli send [target] [preset] [hz]   # impersonate the headset; animates blin
 Point the headset at a different port (e.g. `--ei port 41464`) to verify the Wi-Fi path with
 `vrcft-cli listen 41464` while VRCFaceTracking keeps running.
 
-## How it works, and platform notes
+### How it works, and platform notes
 
 - The Rust core (`client/core`) owns a render-less OpenXR session (empty frames, minimal EGL
   context) purely to host the trackers, polls them at the configured rate and encodes the
@@ -153,7 +177,7 @@ Point the headset at a different port (e.g. `--ei port 41464`) to verify the Wi-
 - Meta and Pico sources are implemented from ALVR's code but untested; those platforms need
   the runtime permissions the app requests on first launch.
 
-## Repository layout
+### Repository layout
 
 ```
 common/protocol   VRCFT-ALVR wire format (encode/decode, tests)

@@ -4,7 +4,7 @@
 #
 #   tools\provision.ps1 -PcAddress 192.168.1.10 [-Autostart] [-Port 41463] [-Rate 60] [-FrameRate 10]
 #                       [-GateApps VirtualDesktop.Android,com.valvesoftware.steamlinkvr] [-Always]
-#                       [-NoEye] [-NoFace]
+#                       [-NoEye] [-NoFace] [-PreciseEye]
 #
 # Everything set here can be changed later in the FT Bridge Settings app on the headset.
 
@@ -17,6 +17,9 @@ param(
     [string[]]$GateApps = @("VirtualDesktop.Android"),
     # Forward regardless of the foreground app
     [switch]$Always,
+    # VIVE: also send the precise per-eye gaze and the pupil diameter (XR_HTC_eye_tracker).
+    # Only with the VRCFT-ViveBridge module on the PC; the stock ALVR module logs errors for it
+    [switch]$PreciseEye,
     [switch]$NoEye,
     [switch]$NoFace,
     [switch]$Autostart,
@@ -90,20 +93,23 @@ foreach ($permission in $trackingPermissions) {
 $autostartValue = if ($Autostart) { "true" } else { "false" }
 $alwaysValue = if ($Always) { "true" } else { "false" }
 $eyeValue = if ($NoEye) { "false" } else { "true" }
+$preciseEyeValue = if ($PreciseEye) { "true" } else { "false" }
 $faceValue = if ($NoFace) { "false" } else { "true" }
 $gateList = @($GateApps | Where-Object { $_ }) -join ","
 $gateText = if ($Always -or -not $gateList) { "always" } else { "only while $gateList runs" }
-Write-Host "Starting the service -> ${PcAddress}:$Port at $Rate Hz (frames $FrameRate Hz, eye $eyeValue, face $faceValue, $gateText, autostart $autostartValue) ..."
+Write-Host "Starting the service -> ${PcAddress}:$Port at $Rate Hz (frames $FrameRate Hz, eye $eyeValue, precise eye $preciseEyeValue, face $faceValue, $gateText, autostart $autostartValue) ..."
 & $Adb logcat -c
 if ($gateList) {
     & $Adb shell am start-foreground-service -n "$package/.TrackingService" -a "$package.START" `
         --es host $PcAddress --ei port $Port --ef rate $Rate --ef framerate $FrameRate `
-        --ez autostart $autostartValue --ez always $alwaysValue --ez eye $eyeValue --ez face $faceValue `
+        --ez autostart $autostartValue --ez always $alwaysValue `
+        --ez eye $eyeValue --ez preciseeye $preciseEyeValue --ez face $faceValue `
         --es gate $gateList | Out-Null
 } else {
     & $Adb shell am start-foreground-service -n "$package/.TrackingService" -a "$package.START" `
         --es host $PcAddress --ei port $Port --ef rate $Rate --ef framerate $FrameRate `
-        --ez autostart $autostartValue --ez always $alwaysValue --ez eye $eyeValue --ez face $faceValue `
+        --ez autostart $autostartValue --ez always $alwaysValue `
+        --ez eye $eyeValue --ez preciseeye $preciseEyeValue --ez face $faceValue `
         --esn gate | Out-Null
 }
 

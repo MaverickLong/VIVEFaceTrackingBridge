@@ -27,11 +27,11 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          GRADLE_VERSION=$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" client/app/build.gradle)
+          GRADLE_VERSION=$(sed -n 's/^ftbridgeVersion=\(.*\)$/\1/p' client/gradle.properties | tr -d '\r')
           CARGO_VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
-          echo "tag $TAG_VERSION, build.gradle $GRADLE_VERSION, Cargo.toml $CARGO_VERSION"
+          echo "tag $TAG_VERSION, gradle.properties $GRADLE_VERSION, Cargo.toml $CARGO_VERSION"
           if [ "$TAG_VERSION" != "$GRADLE_VERSION" ] || [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match the versions in client/app/build.gradle and Cargo.toml"
+            echo "::error::Tag $GITHUB_REF_NAME does not match the versions in client/gradle.properties and Cargo.toml"
             exit 1
           fi
 
@@ -77,7 +77,7 @@ jobs:
             echo "No ANDROID_KEYSTORE_BASE64 secret: signing with a debug key (updates need a reinstall)"
           fi
 
-      - name: Build APK
+      - name: Build APKs (service and settings app)
         env:
           FTBRIDGE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           FTBRIDGE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -99,6 +99,7 @@ jobs:
           STAGE=dist/FTBridge
           mkdir -p "$STAGE/tools"
           cp client/app/build/outputs/apk/release/app-release.apk "$STAGE/FTBridge.apk"
+          cp client/panel/build/outputs/apk/release/panel-release.apk "$STAGE/FTBridgeSettings.apk"
           cp packaging/windows/Setup.cmd packaging/windows/setup.ps1 packaging/windows/README.txt "$STAGE/"
           cp tools/provision.ps1 "$STAGE/"
           cp target/x86_64-pc-windows-gnu/release/vrcft-cli.exe "$STAGE/tools/"
@@ -106,6 +107,7 @@ jobs:
           sed -i 's/\r\?$/\r/' "$STAGE/Setup.cmd"
           (cd dist && zip -r "FTBridge-$VERSION-windows.zip" FTBridge)
           cp "$STAGE/FTBridge.apk" "dist/FTBridge-$VERSION.apk"
+          cp "$STAGE/FTBridgeSettings.apk" "dist/FTBridgeSettings-$VERSION.apk"
           ls -l dist
 
       - uses: actions/upload-artifact@v4
@@ -129,8 +131,10 @@ jobs:
           3. Double-click **Setup.cmd** and follow the messages.
 
           README.txt inside the zip has the full steps and troubleshooting.
-          FTBridge-$VERSION.apk is the bare headset app for manual installation.
+          FTBridge-$VERSION.apk (service) and FTBridgeSettings-$VERSION.apk (settings app) are the
+          bare headset apps for manual installation; install both.
           EOF
           gh release create "$GITHUB_REF_NAME" \
             "dist/FTBridge-$VERSION-windows.zip" "dist/FTBridge-$VERSION.apk" \
+            "dist/FTBridgeSettings-$VERSION.apk" \
             --title "FT Bridge $GITHUB_REF_NAME" --notes-file dist/notes.md

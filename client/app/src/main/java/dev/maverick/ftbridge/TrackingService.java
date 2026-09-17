@@ -40,6 +40,9 @@ public final class TrackingService extends Service {
     private static final String CHANNEL_ID = "bridge";
     private static final int NOTIFICATION_ID = 1;
     private static final long GATE_CHECK_INTERVAL_MS = 2000;
+    // A restart right after a stop is refused while the old bridge thread winds down
+    private static final long START_RETRY_INTERVAL_MS = 500;
+    private static final int START_RETRY_LIMIT = 20;
     // Overlap between successive usage event queries, and the initial look-back
     private static final long GATE_QUERY_OVERLAP_MS = 10_000;
     private static final long GATE_INITIAL_LOOKBACK_MS = 24L * 60 * 60 * 1000;
@@ -53,6 +56,16 @@ public final class TrackingService extends Service {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable gateCheck = this::checkGate;
+    private int startAttempts;
+    private final Runnable startWhenReady = new Runnable() {
+        @Override
+        public void run() {
+            if (startBridge() || ++startAttempts >= START_RETRY_LIMIT) {
+                return;
+            }
+            handler.postDelayed(this, START_RETRY_INTERVAL_MS);
+        }
+    };
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
     private Settings.Values settings;
@@ -113,25 +126,27 @@ public final class TrackingService extends Service {
             xrActivity = new HeadlessActivity(this);
         }
 
+        // Restart the bridge so changed settings take effect
         handler.removeCallbacks(gateCheck);
+        handler.removeCallbacks(startWhenReady);
+        stopBridge();
+        startAttempts = 0;
+
         if (!settings.eyeTracking && !settings.faceTracking) {
             Log.w(TAG, "eye and face tracking are both disabled, nothing to forward");
             gateStatus = "eye and face tracking are both disabled";
-            stopBridge();
             return START_STICKY;
         }
 
         String gatePackages = ControlProtocol.joinPackageList(settings.gatePackages);
         if (settings.runsAlways()) {
             gateStatus = settings.alwaysForward ? "always forwarding" : "no gate apps, running always";
-            startBridge();
+            handler.post(startWhenReady);
         } else if (!hasUsageAccess(this)) {
             Log.w(TAG, "usage access not granted, cannot gate on " + gatePackages + "; running always");
             gateStatus = "usage access not granted, running always";
-            startBridge();
+            handler.post(startWhenReady);
         } else {
-            // Restart the bridge so changed settings take effect, then let the gate decide
-            stopBridge();
             foregroundPackage = null;
             lastUsageQueryTime = 0;
             handler.post(gateCheck);
@@ -143,6 +158,7 @@ public final class TrackingService extends Service {
     @Override
     public void onDestroy() {
         handler.removeCallbacks(gateCheck);
+        handler.removeCallbacks(startWhenReady);
         NativeCore.stop();
         running = false;
         gateStatus = "";
@@ -150,12 +166,14 @@ public final class TrackingService extends Service {
         super.onDestroy();
     }
 
-    private void startBridge() {
+    /** Returns false if the core refused (previous thread still stopping, or bad settings). */
+    private boolean startBridge() {
         Log.i(TAG, "starting bridge -> " + settings.host + ":" + settings.port
                 + " @ " + settings.rateHz + " Hz, frame rate " + settings.frameRateHz + " Hz"
                 + ", eye " + settings.eyeTracking + ", face " + settings.faceTracking);
         bridgeRunning = NativeCore.start(xrActivity, settings.host, settings.port,
                 settings.rateHz, settings.frameRateHz, settings.eyeTracking, settings.faceTracking);
+        return bridgeRunning;
     }
 
     private void stopBridge() {

@@ -1,0 +1,3 @@
+[submodule "VRCFT-ViveBridge"]
+	path = VRCFT-ViveBridge
+	url = git@github.com:MaverickLong/VRCFT-ViveBridge.git

@@ -49,11 +49,16 @@ In essence, any OpenXR headset exposing `XR_HTC_facial_tracking`, `XR_FB_face_tr
 ### Changing settings on the headset
 
 Quit the streaming app, open **FT Bridge Settings** from the headset's app library, change
-what you need and tap *Apply and start*: the PC address, eye tracking and face tracking on or
-off, always forward, or auto-start with Virtual Desktop, Steam Link or a custom app (package
-name). The values the PC setup provisioned are shown there. The status area at the bottom
-shows what the service is doing (session state, sources, packets sent). Closing the app, or
-the headset stopping it when a VR app starts, does not affect the service.
+what you need and tap *Apply and start*: the PC address, eye tracking, face tracking and gaze
+tracking on or off, always forward, or auto-start with Virtual Desktop, Steam Link or a custom
+app (package name). The values the PC setup provisioned are shown there. The status area at
+the bottom shows what the service is doing (session state, sources, packets sent). Closing the
+app, or the headset stopping it when a VR app starts, does not affect the service.
+
+Gaze tracking is off by default: leaving the eye tracker's gaze to Virtual Desktop makes the
+bridge compatible with **VD Eye Tracking Foveated Encoding**, and VD's own VRCFT module
+supplies the gaze to VRCFaceTracking. Eye tracking (blink, wide, squeeze, eye direction) and
+face tracking keep coming from the bridge.
 
 `README.txt` inside the zip has the same steps plus troubleshooting.
 
@@ -84,6 +89,7 @@ With adb on the PC and both APKs built:
 tools\provision.ps1 -PcAddress 192.168.1.10 -Autostart
 tools\provision.ps1 -PcAddress 192.168.1.10 -Autostart -GateApps VirtualDesktop.Android,com.valvesoftware.steamlinkvr
 tools\provision.ps1 -PcAddress 192.168.1.10 -Always -NoFace     # forward eye tracking only, regardless of the app
+tools\provision.ps1 -PcAddress 192.168.1.10 -Autostart -Gaze    # also forward the gaze pose (not with VD eye tracking)
 ```
 
 This does everything `Setup.cmd` does except fetching adb and detecting the address.
@@ -111,8 +117,9 @@ the bridge runs).
 | Setting | Default | Notes |
 |---|---|---|
 | PC address / port | – / 41463 | Where the VRCFT-ALVR module listens |
-| Eye tracking | on | Gaze action, `XR_FB_eye_tracking_social` and the HTC eye tracker. Off: those are never created. |
-| Face tracking | on | HTC lip tracker, Meta and Pico expression trackers. Off: never created. With both off nothing is forwarded. |
+| Eye tracking | on | The HTC eye expression tracker (`XR_HTC_facial_tracking`, eye): blink, wide, squeeze and the look-direction weights. On Meta and Pico these come with the face expressions. Off: never created. |
+| Face tracking | on | HTC lip tracker, Meta and Pico expression trackers. Off: never created. |
+| Gaze tracking | **off** | The gaze pose sources: `XR_EXT_eye_gaze_interaction` (combined gaze) and `XR_FB_eye_tracking_social`. Off leaves the eye tracker's gaze to Virtual Desktop, which makes the bridge compatible with VD Eye Tracking Foveated Encoding; VD's VRCFT module supplies the gaze then. On VIVE the gaze action only delivers data to a focused session anyway, so it is normally empty in the background. Note that the VRCFT-ALVR module also derives a gaze from the HTC look-direction weights (`SetEyesHtcParams`), so with the VD module loaded too both write gaze unless the ALVR module is changed to skip it. With gaze, eye and face all off nothing is forwarded. |
 | Always forward | off | Ignore the app list and forward whenever the service runs |
 | Auto-start with apps | `VirtualDesktop.Android` | The bridge (OpenXR session, polling) only runs while one of these packages, or FT Bridge Settings, is in the foreground; the panel offers Virtual Desktop, Steam Link (`com.valvesoftware.steamlinkvr`) and a custom package. An empty list behaves like always forward. Needs usage access, which `provision.ps1` grants over adb (`appops set dev.maverick.ftbridge android:get_usage_stats allow`); without it the bridge runs always. The VIVE runtime powers the trackers down when no VR app is active anyway. |
 | Poll/send rate | 60 Hz | The VIVE trackers sample at 60 Hz |
@@ -124,8 +131,8 @@ Everything can also be set over adb (the keys are in `client/control`), e.g.:
 ```
 adb shell am start-foreground-service -n dev.maverick.ftbridge/.TrackingService \
     -a dev.maverick.ftbridge.START --es host 192.168.1.10 --ei port 41463 \
-    --ef rate 60 --ef framerate 10 --ez autostart true --ez eye true --ez face true \
-    --ez always false --es gate VirtualDesktop.Android,com.valvesoftware.steamlinkvr
+    --ef rate 60 --ef framerate 10 --ez autostart true --ez gaze false --ez eye true \
+    --ez face true --ez always false --es gate VirtualDesktop.Android,com.valvesoftware.steamlinkvr
 adb shell am startservice -n dev.maverick.ftbridge/.TrackingService -a dev.maverick.ftbridge.STOP
 adb logcat -s ftbridge:*      # status heartbeat every 5 s
 ```
@@ -193,9 +200,13 @@ Point the headset at a different port (e.g. `--ei port 41464`) to verify the Wi-
   hands it a `HeadlessActivity`: an Activity object that is never started, with a detached
   window. With it the session reaches SYNCHRONIZED and both HTC trackers deliver data while
   another app owns the display.
-- The VRCFT module derives gaze from the HTC eye expression weights, so eye gaze works in the
-  background. The action-based `XR_EXT_eye_gaze_interaction` quaternion is only delivered to a
-  focused session and is therefore normally absent.
+- VIVE splits eye data across two extensions: `XR_EXT_eye_gaze_interaction` carries only the
+  gaze pose, `XR_HTC_facial_tracking` (eye tracker) carries 14 expression weights: blink, wide
+  and squeeze per eye plus the look direction (up/down/in/out per eye). There is no brow data;
+  the VRCFT-ALVR module emulates brows from wide/squeeze and derives gaze from the
+  look-direction weights, so eye gaze works in the background even with gaze tracking off.
+  The action-based gaze quaternion is only delivered to a focused session and is therefore
+  normally absent anyway.
 - Meta and Pico sources are implemented from ALVR's code but untested; those platforms need
   runtime permissions, which `provision.ps1` grants over adb (`pm grant`) since the service
   app has no activity to ask for them.

@@ -28,6 +28,8 @@ public final class Settings {
     public static final String KEY_RATE_HZ = "rate";
     public static final String KEY_FRAME_RATE_HZ = "framerate";
     public static final String KEY_AUTOSTART = "autostart";
+    public static final String KEY_EYE_TRACKING = "eye";
+    public static final String KEY_FACE_TRACKING = "face";
     // Null or empty disables gating (--esn gate)
     public static final String KEY_GATE_PACKAGE = "gate";
 
@@ -37,6 +39,8 @@ public final class Settings {
     private static final String PREF_RATE = "rate_hz";
     private static final String PREF_AUTOSTART = "autostart";
     private static final String PREF_FRAME_RATE = "frame_rate_hz";
+    private static final String PREF_EYE_TRACKING = "eye_tracking";
+    private static final String PREF_FACE_TRACKING = "face_tracking";
     private static final String PREF_GATE_PACKAGE = "gate_package";
 
     /** One consistent snapshot of all settings. */
@@ -46,6 +50,8 @@ public final class Settings {
         public float rateHz = DEFAULT_RATE_HZ;
         public float frameRateHz = DEFAULT_FRAME_RATE_HZ;
         public boolean autostart = false;
+        public boolean eyeTracking = true;
+        public boolean faceTracking = true;
         public String gatePackage = DEFAULT_GATE_PACKAGE;
 
         /** Overrides the fields whose keys are present; other fields are left alone. */
@@ -60,6 +66,8 @@ public final class Settings {
             rateHz = extras.getFloat(KEY_RATE_HZ, rateHz);
             frameRateHz = extras.getFloat(KEY_FRAME_RATE_HZ, frameRateHz);
             autostart = extras.getBoolean(KEY_AUTOSTART, autostart);
+            eyeTracking = extras.getBoolean(KEY_EYE_TRACKING, eyeTracking);
+            faceTracking = extras.getBoolean(KEY_FACE_TRACKING, faceTracking);
             if (extras.containsKey(KEY_GATE_PACKAGE)) {
                 gatePackage = trimmed(extras.getString(KEY_GATE_PACKAGE));
             }
@@ -72,6 +80,8 @@ public final class Settings {
             bundle.putFloat(KEY_RATE_HZ, rateHz);
             bundle.putFloat(KEY_FRAME_RATE_HZ, frameRateHz);
             bundle.putBoolean(KEY_AUTOSTART, autostart);
+            bundle.putBoolean(KEY_EYE_TRACKING, eyeTracking);
+            bundle.putBoolean(KEY_FACE_TRACKING, faceTracking);
             bundle.putString(KEY_GATE_PACKAGE, gatePackage);
             return bundle;
         }
@@ -94,6 +104,8 @@ public final class Settings {
         values.rateHz = preferences.getFloat(PREF_RATE, values.rateHz);
         values.frameRateHz = preferences.getFloat(PREF_FRAME_RATE, values.frameRateHz);
         values.autostart = preferences.getBoolean(PREF_AUTOSTART, values.autostart);
+        values.eyeTracking = preferences.getBoolean(PREF_EYE_TRACKING, values.eyeTracking);
+        values.faceTracking = preferences.getBoolean(PREF_FACE_TRACKING, values.faceTracking);
         values.gatePackage = preferences.getString(PREF_GATE_PACKAGE, values.gatePackage);
         return values;
     }
@@ -105,6 +117,8 @@ public final class Settings {
                 .putFloat(PREF_RATE, values.rateHz)
                 .putFloat(PREF_FRAME_RATE, values.frameRateHz)
                 .putBoolean(PREF_AUTOSTART, values.autostart)
+                .putBoolean(PREF_EYE_TRACKING, values.eyeTracking)
+                .putBoolean(PREF_FACE_TRACKING, values.faceTracking)
                 .putString(PREF_GATE_PACKAGE, values.gatePackage)
                 .apply();
     }

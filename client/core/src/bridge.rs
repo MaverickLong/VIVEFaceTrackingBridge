@@ -6,7 +6,11 @@
 //! the foreground) trackers are still polled with the current time: whether
 //! the runtime keeps serving data in that state is platform specific.
 
-use crate::{egl_context::EglContext, sources::FaceSources, status::Status};
+use crate::{
+    egl_context::EglContext,
+    sources::{FaceSources, SourceFilter},
+    status::Status,
+};
 use openxr as xr;
 use std::{
     ffi::CString,
@@ -32,6 +36,8 @@ pub struct Config {
     // display rate: each frame costs runtime CPU, so this is decoupled from the poll rate.
     // 0 disables the frame loop and leaves the session in READY.
     pub frame_rate_hz: f32,
+    // Which trackers to use; the others are never created
+    pub sources: SourceFilter,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -214,7 +220,13 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
         .unwrap_or(xr::EnvironmentBlendMode::OPAQUE);
 
     status.set_phase("creating trackers");
-    let sources = FaceSources::new(&instance, &session, system, vendor == Vendor::Htc);
+    let sources = FaceSources::new(
+        &instance,
+        &session,
+        system,
+        vendor == Vendor::Htc,
+        config.sources,
+    );
     if !sources.has_expressions_tracker() {
         log::warn!("no face expression tracker available on this device");
     }

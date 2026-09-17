@@ -32,6 +32,8 @@ public final class MainActivity extends Activity {
     private EditText hostInput;
     private EditText portInput;
     private EditText rateInput;
+    private CheckBox eyeTrackingInput;
+    private CheckBox faceTrackingInput;
     private CheckBox autostartInput;
     private EditText frameRateInput;
     private EditText gateInput;
@@ -62,6 +64,16 @@ public final class MainActivity extends Activity {
         layout.addView(label("Port (VRCFT-ALVR module listens on " + Settings.DEFAULT_PORT + ")"));
         portInput = input(String.valueOf(settings.port), InputType.TYPE_CLASS_NUMBER);
         layout.addView(portInput);
+
+        eyeTrackingInput = new CheckBox(this);
+        eyeTrackingInput.setText("Eye tracking");
+        eyeTrackingInput.setChecked(settings.eyeTracking);
+        layout.addView(eyeTrackingInput);
+
+        faceTrackingInput = new CheckBox(this);
+        faceTrackingInput.setText("Face tracking");
+        faceTrackingInput.setChecked(settings.faceTracking);
+        layout.addView(faceTrackingInput);
 
         layout.addView(label("Poll/send rate (Hz). The VIVE trackers sample at " + (int) Settings.DEFAULT_RATE_HZ));
         rateInput = input(String.valueOf((int) settings.rateHz), InputType.TYPE_CLASS_NUMBER);
@@ -138,6 +150,8 @@ public final class MainActivity extends Activity {
             return;
         }
         settings.autostart = autostartInput.isChecked();
+        settings.eyeTracking = eyeTrackingInput.isChecked();
+        settings.faceTracking = faceTrackingInput.isChecked();
         settings.gatePackage = gateInput.getText().toString().trim();
 
         store.store(settings);

@@ -11,6 +11,13 @@ use openxr as xr;
 const EYE_GAZE_PROFILE_PATH: &str = "/interaction_profiles/ext/eye_gaze_interaction";
 const EYE_GAZE_INPUT_PATH: &str = "/user/eyes_ext/input/gaze_ext/pose";
 
+/// Which kinds of tracking to use. Disabled kinds are neither created nor polled.
+#[derive(Clone, Copy, Debug)]
+pub struct SourceFilter {
+    pub eye: bool,
+    pub face: bool,
+}
+
 enum ExpressionsTracker {
     Fb(FaceTracker2FB),
     Bd(FaceTrackerBD),
@@ -21,6 +28,7 @@ enum ExpressionsTracker {
 }
 
 pub struct FaceSources {
+    filter: SourceFilter,
     action_set: Option<xr::ActionSet>,
     eyes_combined: Option<(xr::Action<xr::Posef>, xr::Space)>,
     eyes_social: Option<EyeTrackerSocial>,
@@ -51,8 +59,12 @@ impl FaceSources {
         session: &xr::Session<xr::OpenGlEs>,
         system: xr::SystemId,
         is_vive: bool,
+        filter: SourceFilter,
     ) -> Self {
-        let eye_gaze_supported = extensions::supports_eye_gaze_interaction(instance, system);
+        log::info!("source filter: eye {}, face {}", filter.eye, filter.face);
+
+        let eye_gaze_supported =
+            filter.eye && extensions::supports_eye_gaze_interaction(instance, system);
         log::info!("eye gaze interaction supported: {eye_gaze_supported}");
 
         let mut action_set = None;
@@ -87,19 +99,41 @@ impl FaceSources {
             None
         };
 
-        let eyes_social = check_source("EyeTrackerSocial", EyeTrackerSocial::new(session));
+        let eyes_social = if filter.eye {
+            check_source("EyeTrackerSocial", EyeTrackerSocial::new(session))
+        } else {
+            None
+        };
 
         let expressions_tracker = if is_vive {
-            let eye = check_source(
-                "FacialTrackerHTC (eyes)",
-                FacialTrackerHTC::new(session.clone(), system, xr::FacialTrackingTypeHTC::EYE_DEFAULT),
-            );
-            let lip = check_source(
-                "FacialTrackerHTC (lips)",
-                FacialTrackerHTC::new(session.clone(), system, xr::FacialTrackingTypeHTC::LIP_DEFAULT),
-            );
+            let eye = if filter.eye {
+                check_source(
+                    "FacialTrackerHTC (eyes)",
+                    FacialTrackerHTC::new(
+                        session.clone(),
+                        system,
+                        xr::FacialTrackingTypeHTC::EYE_DEFAULT,
+                    ),
+                )
+            } else {
+                None
+            };
+            let lip = if filter.face {
+                check_source(
+                    "FacialTrackerHTC (lips)",
+                    FacialTrackerHTC::new(
+                        session.clone(),
+                        system,
+                        xr::FacialTrackingTypeHTC::LIP_DEFAULT,
+                    ),
+                )
+            } else {
+                None
+            };
 
             (eye.is_some() || lip.is_some()).then_some(ExpressionsTracker::Htc { eye, lip })
+        } else if !filter.face {
+            None
         } else if let Some(tracker) = check_source(
             "FaceTracker2FB",
             FaceTracker2FB::new(session.clone(), true, true),
@@ -114,6 +148,7 @@ impl FaceSources {
         };
 
         Self {
+            filter,
             action_set,
             eyes_combined,
             eyes_social,
@@ -146,6 +181,13 @@ impl FaceSources {
                 }
             }
             None => (),
+        }
+
+        if !self.filter.eye {
+            names.push("(eye tracking off)");
+        }
+        if !self.filter.face {
+            names.push("(face tracking off)");
         }
 
         if names.is_empty() {

@@ -17,6 +17,7 @@ mod status;
 mod android {
     use crate::{
         bridge::{self, Config},
+        sources::SourceFilter,
         status::Status,
     };
     use jni::{
@@ -96,8 +97,15 @@ mod android {
         port: jint,
         rate_hz: jfloat,
         frame_rate_hz: jfloat,
+        eye_tracking: jboolean,
+        face_tracking: jboolean,
     ) -> jboolean {
         init_once(&mut env, &context);
+
+        let sources = SourceFilter {
+            eye: eye_tracking != jni::sys::JNI_FALSE,
+            face: face_tracking != jni::sys::JNI_FALSE,
+        };
 
         let host = env
             .get_string(&host)
@@ -133,6 +141,7 @@ mod android {
                     target,
                     rate_hz,
                     frame_rate_hz,
+                    sources,
                 };
                 let result = panic::catch_unwind(|| bridge::run(config, &thread_stop, &STATUS));
 

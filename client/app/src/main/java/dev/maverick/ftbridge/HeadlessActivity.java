@@ -6,7 +6,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
 import android.hardware.display.DisplayManager;
 import android.util.Log;
 import android.view.Display;
@@ -45,13 +44,15 @@ public final class HeadlessActivity extends Activity {
         window = createDetachedWindow();
         setPrivateField("mApplication", application);
         setPrivateField("mWindow", window);
-        try {
-            ActivityInfo info = application.getPackageManager()
-                    .getActivityInfo(new ComponentName(application, MainActivity.class), 0);
-            setPrivateField("mActivityInfo", info);
-        } catch (PackageManager.NameNotFoundException e) {
-            Log.w(TAG, "cannot resolve activity info: " + e);
-        }
+
+        // Activity reads e.g. the theme and orientation from here; this app declares no
+        // activity, so describe this one with the application defaults
+        ActivityInfo info = new ActivityInfo();
+        info.applicationInfo = application.getApplicationInfo();
+        info.packageName = application.getPackageName();
+        info.name = HeadlessActivity.class.getName();
+        info.theme = info.applicationInfo.theme;
+        setPrivateField("mActivityInfo", info);
     }
 
     // The runtime attaches its VrSurfaceView through setContentView; Activity's version also
@@ -128,7 +129,7 @@ public final class HeadlessActivity extends Activity {
 
     @Override
     public ComponentName getComponentName() {
-        return new ComponentName(getBaseContext(), MainActivity.class);
+        return new ComponentName(getBaseContext(), HeadlessActivity.class);
     }
 
     @Override

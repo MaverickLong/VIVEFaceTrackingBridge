@@ -36,12 +36,14 @@
     <uses-feature android:name="oculus.software.eye_tracking" android:required="false" />
     <uses-feature android:name="oculus.software.face_tracking" android:required="false" />
 
-    <!-- Needed on Android 11+ for the OpenXR loader to discover the runtime broker -->
+    <!-- Needed on Android 11+ for the OpenXR loader to discover the runtime broker, and to
+         see the settings app (notification target) -->
     <queries>
         <intent>
             <action android:name="org.khronos.openxr.OpenXRRuntimeService" />
         </intent>
         <provider android:authorities="org.khronos.openxr.runtime_broker;org.khronos.openxr.system_runtime_broker" />
+        <package android:name="dev.maverick.ftbridge.settings" />
     </queries>
 
     <application
@@ -54,20 +56,10 @@
         <meta-data android:name="picovr.software.eye_tracking" android:value="1" />
         <meta-data android:name="picovr.software.face_tracking" android:value="true" />
 
-        <!-- Diagnostics panel, disabled by default: the VIVE system services track every
-             package with a launchable activity and force-stop the others whenever a VR app
-             gains focus, which would kill this service each time Virtual Desktop starts.
-             Enable temporarily with: adb shell pm enable dev.maverick.ftbridge/.MainActivity -->
-        <activity
-            android:name=".MainActivity"
-            android:enabled="false"
-            android:exported="true"
-            android:launchMode="singleTask">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+        <!-- No activity on purpose: the VIVE system services track every package with a
+             launchable activity and force-stop the others whenever a VR app gains focus,
+             which would kill this service each time Virtual Desktop starts. The UI is the
+             separate settings app (client/panel). -->
 
         <!-- Exported only for provisioning over adb: DUMP is held by the shell and
              system but is not obtainable by third-party apps. -->

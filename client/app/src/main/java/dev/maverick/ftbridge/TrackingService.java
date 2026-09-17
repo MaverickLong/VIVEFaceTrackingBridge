@@ -8,6 +8,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.app.usage.UsageEvents;
 import android.app.usage.UsageStatsManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -27,7 +28,7 @@ import dev.maverick.ftbridge.control.ControlProtocol;
  * serving tracking data in that state is up to the platform.
  *
  * With gate apps configured, the bridge itself only runs while one of them
- * (or this app's own control panel) is in the foreground.
+ * (or the settings app, which shows the live status) is in the foreground.
  */
 public final class TrackingService extends Service {
     public static final String ACTION_START = "dev.maverick.ftbridge.START";
@@ -169,7 +170,7 @@ public final class TrackingService extends Service {
         updateForegroundPackage();
 
         boolean allowed = settings.gatePackages.contains(foregroundPackage)
-                || getPackageName().equals(foregroundPackage);
+                || ControlProtocol.SETTINGS_PACKAGE.equals(foregroundPackage);
         if (allowed && !bridgeRunning) {
             Log.i(TAG, "gate: " + foregroundPackage + " in foreground");
             startBridge();
@@ -219,16 +220,21 @@ public final class TrackingService extends Service {
         manager.createNotificationChannel(new NotificationChannel(
                 CHANNEL_ID, "Face tracking bridge", NotificationManager.IMPORTANCE_LOW));
 
-        PendingIntent openActivity = PendingIntent.getActivity(
-                this, 0, new Intent(this, MainActivity.class), PendingIntent.FLAG_IMMUTABLE);
-
-        return new Notification.Builder(this, CHANNEL_ID)
+        Notification.Builder builder = new Notification.Builder(this, CHANNEL_ID)
                 .setContentTitle("FT Bridge")
                 .setContentText("Streaming face tracking")
                 .setSmallIcon(android.R.drawable.ic_menu_view)
-                .setContentIntent(openActivity)
-                .setOngoing(true)
-                .build();
+                .setOngoing(true);
+
+        // Opens the settings app if it is installed (it is a separate package, see ControlService)
+        Intent settingsIntent = new Intent().setComponent(new ComponentName(
+                ControlProtocol.SETTINGS_PACKAGE, ControlProtocol.SETTINGS_ACTIVITY_CLASS));
+        if (getPackageManager().resolveActivity(settingsIntent, 0) != null) {
+            builder.setContentIntent(PendingIntent.getActivity(
+                    this, 0, settingsIntent, PendingIntent.FLAG_IMMUTABLE));
+        }
+
+        return builder.build();
     }
 
     private void acquireLocks() {

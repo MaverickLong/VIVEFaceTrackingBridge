@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Defined by the service app with signature protection -->
+    <uses-permission android:name="dev.maverick.ftbridge.permission.CONTROL" />
+
+    <!-- Package visibility (Android 11+): needed to bind to the service app -->
+    <queries>
+        <package android:name="dev.maverick.ftbridge" />
+    </queries>
+
+    <application
+        android:label="FT Bridge Settings"
+        android:allowBackup="false"
+        android:theme="@android:style/Theme.DeviceDefault">
+
+        <!-- Launchable, so the VIVE system force-stops this app whenever a VR app gains focus.
+             That is harmless: the bridge itself runs in dev.maverick.ftbridge, which has no
+             activity and is therefore left alone. -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

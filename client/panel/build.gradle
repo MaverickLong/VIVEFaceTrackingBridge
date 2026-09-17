@@ -2,27 +2,22 @@ plugins {
     id 'com.android.application'
 }
 
-// Release signing key from the environment (CI secrets, see tools/make-keystore.ps1);
-// without it the debug key is used so local builds stay installable
+// Same signing as the service app (client/app): the control interface it talks to is
+// guarded by a signature permission
 def releaseKeystore = System.getenv('FTBRIDGE_KEYSTORE')
 
 android {
-    namespace 'dev.maverick.ftbridge'
+    namespace 'dev.maverick.ftbridge.settings'
     compileSdk 31
     buildToolsVersion '36.0.0'
 
     defaultConfig {
-        applicationId 'dev.maverick.ftbridge'
+        applicationId 'dev.maverick.ftbridge.settings'
         minSdk 29
         targetSdk 31
-        // Shared with the settings app, see gradle.properties
+        // Shared with the service app, see gradle.properties
         versionName ftbridgeVersion
-        // Derived from versionName (major.minor.patch) so every release installs as an upgrade
         versionCode versionName.tokenize('.').collect { it as Integer }.inject(0) { acc, part -> acc * 100 + part }
-
-        ndk {
-            abiFilters 'arm64-v8a'
-        }
     }
 
     signingConfigs {
@@ -48,16 +43,7 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    packagingOptions {
-        jniLibs {
-            // Extract native libs to disk so the OpenXR loader can be dlopen'ed by name
-            useLegacyPackaging = true
-        }
-    }
-
     lint {
-        // Not distributed through Google Play; targetSdk 31 is deliberate (Android 12 headsets,
-        // no notification permission prompt)
         disable 'ExpiredTargetSdkVersion'
     }
 }

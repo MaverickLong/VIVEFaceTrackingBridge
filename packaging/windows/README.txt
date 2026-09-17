@@ -38,6 +38,8 @@ window) and FT Bridge Settings. To change something:
    - Eye tracking / Face tracking on or off. (The bridge does not touch the
      gaze data Virtual Desktop uses, so VD Eye Tracking Foveated Encoding
      keeps working alongside it.)
+   - Precise gaze and pupil size: only turn this on if VRCFaceTracking uses
+     the VRCFT-ViveBridge module instead of the stock ALVR module.
    - Always forward, or auto-start with Virtual Desktop, Steam Link or any
      other app (enter its package name).
    - The status area at the bottom shows what the service is doing.

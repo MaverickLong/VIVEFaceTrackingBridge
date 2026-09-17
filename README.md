@@ -90,6 +90,7 @@ With adb on the PC and both APKs built:
 tools\provision.ps1 -PcAddress 192.168.1.10 -Autostart
 tools\provision.ps1 -PcAddress 192.168.1.10 -Autostart -GateApps VirtualDesktop.Android,com.valvesoftware.steamlinkvr
 tools\provision.ps1 -PcAddress 192.168.1.10 -Always -NoFace     # forward eye tracking only, regardless of the app
+tools\provision.ps1 -PcAddress 192.168.1.10 -Autostart -PreciseEye   # precise gaze + pupil size (VRCFT-ViveBridge module)
 ```
 
 This does everything `Setup.cmd` does except fetching adb and detecting the address.
@@ -118,6 +119,7 @@ the bridge runs).
 |---|---|---|
 | PC address / port | – / 41463 | Where the VRCFT-ALVR module listens |
 | Eye tracking | on | The HTC eye expression tracker (`XR_HTC_facial_tracking`, eye): blink, wide, squeeze and the look-direction weights, from which the VRCFT-ALVR module derives gaze. On Meta this is the social eye gaze (`XR_FB_eye_tracking_social`); Meta and Pico deliver eye expressions with the face ones. Off: never created. With eye and face both off nothing is forwarded. |
+| Precise gaze and pupil size | off | VIVE only, part of eye tracking. Also polls `XR_HTC_eye_tracker` and sends its per-eye gaze pose and pupil diameter in an extra `EyeTrHtc` segment. **Needs the [VRCFT-ViveBridge](https://github.com/MaverickLong/VRCFT-ViveBridge) module** (the `VRCFT-ViveBridge` submodule): the stock VRCFT-ALVR module does not know the segment and logs an error for every packet. With it the module uses the real gaze instead of the clamped look-direction weights (and holds it through blinks), forwards the pupil diameter, and mimics eye wide from pupil dilation (6 mm and below is 0, 7 mm and above is 1), since the headset never reports eye wide. |
 | Face tracking | on | HTC lip tracker, Meta and Pico expression trackers. Off: never created. |
 | Always forward | off | Ignore the app list and forward whenever the service runs |
 | Auto-start with apps | `VirtualDesktop.Android` | The bridge (OpenXR session, polling) only runs while one of these packages, or FT Bridge Settings, is in the foreground; the panel offers Virtual Desktop, Steam Link (`com.valvesoftware.steamlinkvr`) and a custom package. An empty list behaves like always forward. Needs usage access, which `provision.ps1` grants over adb (`appops set dev.maverick.ftbridge android:get_usage_stats allow`); without it the bridge runs always. The VIVE runtime powers the trackers down when no VR app is active anyway. |
@@ -130,8 +132,8 @@ Everything can also be set over adb (the keys are in `client/control`), e.g.:
 ```
 adb shell am start-foreground-service -n dev.maverick.ftbridge/.TrackingService \
     -a dev.maverick.ftbridge.START --es host 192.168.1.10 --ei port 41463 \
-    --ef rate 60 --ef framerate 10 --ez autostart true --ez eye true --ez face true \
-    --ez always false --es gate VirtualDesktop.Android,com.valvesoftware.steamlinkvr
+    --ef rate 60 --ef framerate 10 --ez autostart true --ez eye true --ez preciseeye false \
+    --ez face true --ez always false --es gate VirtualDesktop.Android,com.valvesoftware.steamlinkvr
 adb shell am startservice -n dev.maverick.ftbridge/.TrackingService -a dev.maverick.ftbridge.STOP
 adb logcat -s ftbridge:*      # status heartbeat every 5 s
 ```
@@ -205,8 +207,12 @@ Point the headset at a different port (e.g. `--ei port 41464`) to verify the Wi-
   expression weights: blink, wide and squeeze per eye plus the look direction (up/down/in/out
   per eye); this is the bridge's eye source, and the VRCFT-ALVR module derives gaze from the
   look-direction weights, so eye gaze works in the background. `XR_HTC_eye_tracker` (per-eye
-  gaze, pupil diameter and position, openness/squeeze/wide) is advertised by the runtime but
-  not used yet. There is no brow data; the module emulates brows from wide/squeeze.
+  gaze pose, pupil diameter and position, openness/squeeze/wide) is an HTC-only extension
+  without public headers; the core binds it by hand (`client/core/src/htc_eye_tracker.rs`)
+  and uses its gaze and pupil diameter for the "precise gaze and pupil size" setting. Its
+  openness and squeeze equal the expression weights, and eye wide is always 0 on the Focus
+  Vision in both extensions. There is no brow data; the module emulates brows from
+  wide/squeeze.
 - Meta and Pico sources are implemented from ALVR's code but untested; those platforms need
   runtime permissions, which `provision.ps1` grants over adb (`pm grant`) since the service
   app has no activity to ask for them.
@@ -222,4 +228,5 @@ client/control    keys and message ids shared by the two apps
 tools/vrcft-cli   protocol diagnostics for the PC
 tools/provision.ps1  one-time adb setup
 packaging/windows    Setup.cmd and the end-user README
+VRCFT-ViveBridge     submodule: the VRCFT module fork (needed for precise gaze and pupil size)
 ```

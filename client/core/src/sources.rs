@@ -14,7 +14,15 @@ const EYE_GAZE_INPUT_PATH: &str = "/user/eyes_ext/input/gaze_ext/pose";
 /// Which kinds of tracking to use. Disabled kinds are neither created nor polled.
 #[derive(Clone, Copy, Debug)]
 pub struct SourceFilter {
+    // Gaze poses: XR_EXT_eye_gaze_interaction and XR_FB_eye_tracking_social. Off leaves the
+    // eye tracker's gaze to the streaming app (Virtual Desktop's foveated encoding and its
+    // own VRCFT module). The VRCFT-ALVR module still derives a gaze from the HTC eye
+    // expressions below.
+    pub gaze: bool,
+    // Eye expressions (blink, wide, squeeze, look direction): the HTC eye tracker. Meta and
+    // Pico deliver these as part of the face expressions.
     pub eye: bool,
+    // Face expressions: HTC lip tracker, XR_FB_face_tracking2, XR_BD_facial_simulation
     pub face: bool,
 }
 
@@ -61,10 +69,15 @@ impl FaceSources {
         is_vive: bool,
         filter: SourceFilter,
     ) -> Self {
-        log::info!("source filter: eye {}, face {}", filter.eye, filter.face);
+        log::info!(
+            "source filter: gaze {}, eye {}, face {}",
+            filter.gaze,
+            filter.eye,
+            filter.face
+        );
 
         let eye_gaze_supported =
-            filter.eye && extensions::supports_eye_gaze_interaction(instance, system);
+            filter.gaze && extensions::supports_eye_gaze_interaction(instance, system);
         log::info!("eye gaze interaction supported: {eye_gaze_supported}");
 
         let mut action_set = None;
@@ -99,7 +112,7 @@ impl FaceSources {
             None
         };
 
-        let eyes_social = if filter.eye {
+        let eyes_social = if filter.gaze {
             check_source("EyeTrackerSocial", EyeTrackerSocial::new(session))
         } else {
             None
@@ -183,6 +196,9 @@ impl FaceSources {
             None => (),
         }
 
+        if !self.filter.gaze {
+            names.push("(gaze off)");
+        }
         if !self.filter.eye {
             names.push("(eye tracking off)");
         }

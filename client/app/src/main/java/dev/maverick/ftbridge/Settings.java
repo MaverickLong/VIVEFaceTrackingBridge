@@ -28,6 +28,7 @@ public final class Settings {
     private static final String PREF_RATE = "rate_hz";
     private static final String PREF_AUTOSTART = "autostart";
     private static final String PREF_FRAME_RATE = "frame_rate_hz";
+    private static final String PREF_GAZE_TRACKING = "gaze_tracking";
     private static final String PREF_EYE_TRACKING = "eye_tracking";
     private static final String PREF_FACE_TRACKING = "face_tracking";
     private static final String PREF_ALWAYS_FORWARD = "always_forward";
@@ -42,6 +43,7 @@ public final class Settings {
         public float rateHz = DEFAULT_RATE_HZ;
         public float frameRateHz = DEFAULT_FRAME_RATE_HZ;
         public boolean autostart = false;
+        public boolean gazeTracking = false;
         public boolean eyeTracking = true;
         public boolean faceTracking = true;
         public boolean alwaysForward = false;
@@ -64,6 +66,7 @@ public final class Settings {
             rateHz = extras.getFloat(ControlProtocol.KEY_RATE_HZ, rateHz);
             frameRateHz = extras.getFloat(ControlProtocol.KEY_FRAME_RATE_HZ, frameRateHz);
             autostart = extras.getBoolean(ControlProtocol.KEY_AUTOSTART, autostart);
+            gazeTracking = extras.getBoolean(ControlProtocol.KEY_GAZE_TRACKING, gazeTracking);
             eyeTracking = extras.getBoolean(ControlProtocol.KEY_EYE_TRACKING, eyeTracking);
             faceTracking = extras.getBoolean(ControlProtocol.KEY_FACE_TRACKING, faceTracking);
             alwaysForward = extras.getBoolean(ControlProtocol.KEY_ALWAYS_FORWARD, alwaysForward);
@@ -80,6 +83,7 @@ public final class Settings {
             bundle.putFloat(ControlProtocol.KEY_RATE_HZ, rateHz);
             bundle.putFloat(ControlProtocol.KEY_FRAME_RATE_HZ, frameRateHz);
             bundle.putBoolean(ControlProtocol.KEY_AUTOSTART, autostart);
+            bundle.putBoolean(ControlProtocol.KEY_GAZE_TRACKING, gazeTracking);
             bundle.putBoolean(ControlProtocol.KEY_EYE_TRACKING, eyeTracking);
             bundle.putBoolean(ControlProtocol.KEY_FACE_TRACKING, faceTracking);
             bundle.putBoolean(ControlProtocol.KEY_ALWAYS_FORWARD, alwaysForward);
@@ -106,6 +110,7 @@ public final class Settings {
         values.rateHz = preferences.getFloat(PREF_RATE, values.rateHz);
         values.frameRateHz = preferences.getFloat(PREF_FRAME_RATE, values.frameRateHz);
         values.autostart = preferences.getBoolean(PREF_AUTOSTART, values.autostart);
+        values.gazeTracking = preferences.getBoolean(PREF_GAZE_TRACKING, values.gazeTracking);
         values.eyeTracking = preferences.getBoolean(PREF_EYE_TRACKING, values.eyeTracking);
         values.faceTracking = preferences.getBoolean(PREF_FACE_TRACKING, values.faceTracking);
         values.alwaysForward = preferences.getBoolean(PREF_ALWAYS_FORWARD, values.alwaysForward);
@@ -123,6 +128,7 @@ public final class Settings {
                 .putFloat(PREF_RATE, values.rateHz)
                 .putFloat(PREF_FRAME_RATE, values.frameRateHz)
                 .putBoolean(PREF_AUTOSTART, values.autostart)
+                .putBoolean(PREF_GAZE_TRACKING, values.gazeTracking)
                 .putBoolean(PREF_EYE_TRACKING, values.eyeTracking)
                 .putBoolean(PREF_FACE_TRACKING, values.faceTracking)
                 .putBoolean(PREF_ALWAYS_FORWARD, values.alwaysForward)

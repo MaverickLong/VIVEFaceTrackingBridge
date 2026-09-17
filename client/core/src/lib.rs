@@ -97,12 +97,14 @@ mod android {
         port: jint,
         rate_hz: jfloat,
         frame_rate_hz: jfloat,
+        gaze_tracking: jboolean,
         eye_tracking: jboolean,
         face_tracking: jboolean,
     ) -> jboolean {
         init_once(&mut env, &context);
 
         let sources = SourceFilter {
+            gaze: gaze_tracking != jni::sys::JNI_FALSE,
             eye: eye_tracking != jni::sys::JNI_FALSE,
             face: face_tracking != jni::sys::JNI_FALSE,
         };

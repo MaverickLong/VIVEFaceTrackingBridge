@@ -2,7 +2,7 @@
 //! expressions, as CSV lines in logcat (`EYEPROBE_HEADER,...` once, then one
 //! `EYEPROBE,...` line per poll). `tools/probe-eye-tracker.ps1` collects them.
 
-use crate::htc_eye_tracker::{EyeTrackerHTC, EyeTrackerSample, LEFT, RIGHT};
+use crate::htc_eye_tracker::{EyeTrackerSample, LEFT, RIGHT};
 use openxr::{self as xr, sys};
 use std::fmt::Write;
 
@@ -24,68 +24,41 @@ const EYE_EXPRESSION_NAMES: [&str; 14] = [
     "right_up",
 ];
 
-pub struct EyeProbe {
-    tracker: EyeTrackerHTC,
-    last_error: Option<sys::Result>,
+/// Logs the CSV header; call once when the probe starts.
+pub fn log_header() {
+    let mut header = String::from("poll_time_ns");
+    header.push_str(",gaze_time_ns");
+    for eye in ["l", "r"] {
+        for column in [
+            "gaze_valid", "quat_x", "quat_y", "quat_z", "quat_w", "pos_x", "pos_y", "pos_z",
+            "dir_x", "dir_y", "dir_z",
+        ] {
+            write!(header, ",{eye}_{column}").ok();
+        }
+    }
+    header.push_str(",pupil_time_ns");
+    for eye in ["l", "r"] {
+        for column in ["diameter_valid", "diameter_mm", "position_valid", "position_x", "position_y"] {
+            write!(header, ",{eye}_{column}").ok();
+        }
+    }
+    header.push_str(",geometric_time_ns");
+    for eye in ["l", "r"] {
+        for column in ["geometric_valid", "openness", "wide", "squeeze"] {
+            write!(header, ",{eye}_{column}").ok();
+        }
+    }
+    header.push_str(",expressions_valid");
+    for name in EYE_EXPRESSION_NAMES {
+        write!(header, ",expr_{name}").ok();
+    }
+    log::info!("EYEPROBE_HEADER,{header}");
 }
 
-impl EyeProbe {
-    pub fn new<G>(session: xr::Session<G>, system: xr::SystemId) -> xr::Result<Self> {
-        let tracker = EyeTrackerHTC::new(session, system)?;
-
-        let mut header = String::from("poll_time_ns");
-        header.push_str(",gaze_time_ns");
-        for eye in ["l", "r"] {
-            for column in [
-                "gaze_valid", "quat_x", "quat_y", "quat_z", "quat_w", "pos_x", "pos_y", "pos_z",
-                "dir_x", "dir_y", "dir_z",
-            ] {
-                write!(header, ",{eye}_{column}").ok();
-            }
-        }
-        header.push_str(",pupil_time_ns");
-        for eye in ["l", "r"] {
-            for column in ["diameter_valid", "diameter_mm", "position_valid", "position_x", "position_y"] {
-                write!(header, ",{eye}_{column}").ok();
-            }
-        }
-        header.push_str(",geometric_time_ns");
-        for eye in ["l", "r"] {
-            for column in ["geometric_valid", "openness", "wide", "squeeze"] {
-                write!(header, ",{eye}_{column}").ok();
-            }
-        }
-        header.push_str(",expressions_valid");
-        for name in EYE_EXPRESSION_NAMES {
-            write!(header, ",expr_{name}").ok();
-        }
-        log::info!("EYEPROBE_HEADER,{header}");
-
-        Ok(Self {
-            tracker,
-            last_error: None,
-        })
-    }
-
-    /// Polls the tracker and logs one CSV line. `eye_expressions` are the HTC eye
-    /// expression weights of the same poll, if active.
-    pub fn record(&mut self, base_space: &xr::Space, time: xr::Time, eye_expressions: Option<&[f32]>) {
-        let sample = match self.tracker.sample(base_space, time) {
-            Ok(sample) => {
-                self.last_error = None;
-                sample
-            }
-            Err(e) => {
-                if self.last_error != Some(e) {
-                    log::warn!("eye probe: {e}");
-                    self.last_error = Some(e);
-                }
-                return;
-            }
-        };
-
-        log::info!("EYEPROBE,{}", format_sample(time, &sample, eye_expressions));
-    }
+/// Logs one CSV line for a tracker sample. `eye_expressions` are the HTC eye expression
+/// weights of the same poll, if active.
+pub fn log_sample(time: xr::Time, sample: &EyeTrackerSample, eye_expressions: Option<&[f32]>) {
+    log::info!("EYEPROBE,{}", format_sample(time, sample, eye_expressions));
 }
 
 fn format_sample(time: xr::Time, sample: &EyeTrackerSample, eye_expressions: Option<&[f32]>) -> String {

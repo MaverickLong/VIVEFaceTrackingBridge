@@ -8,8 +8,7 @@
 
 use crate::{
     egl_context::EglContext,
-    htc_eye_tracker,
-    probe::EyeProbe,
+    htc_eye_tracker, probe,
     sources::{FaceSources, SourceFilter},
     status::Status,
 };
@@ -239,29 +238,29 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
         .unwrap_or(xr::EnvironmentBlendMode::OPAQUE);
 
     status.set_phase("creating trackers");
-    let sources = FaceSources::new(&session, system, vendor == Vendor::Htc, config.sources);
+    let is_vive = vendor == Vendor::Htc;
+    let create_htc_eye_tracker = is_vive
+        && extra_extensions.htc_eye_tracker
+        && (config.eye_probe || (config.sources.eye && config.sources.precise_eye));
+    let sources = FaceSources::new(
+        &session,
+        system,
+        is_vive,
+        config.sources,
+        create_htc_eye_tracker,
+    );
     if !sources.has_expressions_tracker() {
         log::warn!("no face expression tracker available on this device");
     }
     status.set_sources(&sources.describe());
 
-    let mut eye_probe = if !config.eye_probe {
-        None
-    } else if !extra_extensions.htc_eye_tracker {
-        log::warn!("eye probe: XR_HTC_eye_tracker is not available on this runtime");
-        None
-    } else {
-        match EyeProbe::new(session.clone(), system) {
-            Ok(probe) => {
-                log::info!("eye probe: XR_HTC_eye_tracker created");
-                Some(probe)
-            }
-            Err(e) => {
-                log::warn!("eye probe: cannot create the XR_HTC_eye_tracker tracker: {e}");
-                None
-            }
+    if config.eye_probe {
+        if sources.has_htc_eye_tracker() {
+            probe::log_header();
+        } else {
+            log::warn!("eye probe: XR_HTC_eye_tracker is not available on this runtime");
         }
-    };
+    }
 
     let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| format!("cannot bind UDP socket: {e}"))?;
     socket.set_broadcast(true).ok();
@@ -325,6 +324,7 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
                 }
                 xr::Event::UserPresenceChangedEXT(event) => {
                     log::info!("user present: {}", event.is_user_present());
+                    sources.set_user_present(event.is_user_present());
                 }
                 _ => (),
             }
@@ -372,15 +372,18 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
             next_send = now + send_interval;
         }
 
-        let face_data = sources.get_face_data(&view_reference_space, poll_time);
-        if let Some(probe) = &mut eye_probe {
+        let (face_data, eye_tracker_sample) =
+            sources.get_face_data(&view_reference_space, poll_time);
+        if config.eye_probe
+            && let Some(sample) = &eye_tracker_sample
+        {
             let eye_expressions = match &face_data.face_expressions {
                 Some(FaceExpressions::Htc {
                     eye: Some(weights), ..
                 }) => Some(weights.as_slice()),
                 _ => None,
             };
-            probe.record(&view_reference_space, poll_time, eye_expressions);
+            probe::log_sample(poll_time, sample, eye_expressions);
         }
 
         if ftbridge_protocol::encode_vrcft_packet(&face_data, &mut packet_buffer) {

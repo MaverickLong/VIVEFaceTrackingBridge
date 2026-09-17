@@ -102,6 +102,7 @@ mod android {
         rate_hz: jfloat,
         frame_rate_hz: jfloat,
         eye_tracking: jboolean,
+        precise_eye: jboolean,
         face_tracking: jboolean,
         eye_probe: jboolean,
     ) -> jboolean {
@@ -109,6 +110,7 @@ mod android {
 
         let sources = SourceFilter {
             eye: eye_tracking != jni::sys::JNI_FALSE,
+            precise_eye: precise_eye != jni::sys::JNI_FALSE,
             face: face_tracking != jni::sys::JNI_FALSE,
         };
         let eye_probe = eye_probe != jni::sys::JNI_FALSE;

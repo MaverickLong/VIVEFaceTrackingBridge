@@ -36,6 +36,9 @@ public final class ControlProtocol {
     public static final String KEY_AUTOSTART = "autostart";
     // HTC eye expressions (blink, wide, squeeze, look direction), Meta social gaze
     public static final String KEY_EYE_TRACKING = "eye";
+    // VIVE, with eye tracking on: also send XR_HTC_eye_tracker's per-eye gaze and pupil
+    // diameter. Only the VRCFT-ViveBridge module understands that segment.
+    public static final String KEY_PRECISE_EYE = "preciseeye";
     public static final String KEY_FACE_TRACKING = "face";
     // Forward regardless of the foreground app (ignores the gate list)
     public static final String KEY_ALWAYS_FORWARD = "always";

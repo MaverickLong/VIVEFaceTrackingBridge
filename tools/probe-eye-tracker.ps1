@@ -5,8 +5,10 @@
 #
 #   tools\probe-eye-tracker.ps1 [-Seconds 30] [-Out eye-probe.csv]
 #
-# Put the headset on before starting (the trackers only deliver data while it is worn) and
-# keep it on until the countdown ends: look around, blink, squint, open your eyes wide.
+# Put the headset on before starting and keep it on until the countdown ends: look around,
+# blink, squint, open your eyes wide. Eye tracking must be enabled in the bridge settings: the
+# extension is only polled while the headset is worn and the eye expressions are active (the
+# runtime aborts the process when it is polled with the eye tracker stopped).
 
 param(
     [int]$Seconds = 30,

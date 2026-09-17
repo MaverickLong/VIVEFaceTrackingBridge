@@ -34,10 +34,7 @@ public final class ControlProtocol {
     public static final String KEY_RATE_HZ = "rate";
     public static final String KEY_FRAME_RATE_HZ = "framerate";
     public static final String KEY_AUTOSTART = "autostart";
-    // Gaze poses (off by default: leaves the eye tracker's gaze to Virtual Desktop, which makes
-    // it compatible with VD Eye Tracking Foveated Encoding; VD's own VRCFT module supplies gaze)
-    public static final String KEY_GAZE_TRACKING = "gaze";
-    // HTC eye expressions: blink, wide, squeeze, look direction
+    // HTC eye expressions (blink, wide, squeeze, look direction), Meta social gaze
     public static final String KEY_EYE_TRACKING = "eye";
     public static final String KEY_FACE_TRACKING = "face";
     // Forward regardless of the foreground app (ignores the gate list)

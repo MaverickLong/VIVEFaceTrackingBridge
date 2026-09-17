@@ -114,9 +114,9 @@ public final class TrackingService extends Service {
         }
 
         handler.removeCallbacks(gateCheck);
-        if (!settings.gazeTracking && !settings.eyeTracking && !settings.faceTracking) {
-            Log.w(TAG, "gaze, eye and face tracking are all disabled, nothing to forward");
-            gateStatus = "gaze, eye and face tracking are all disabled";
+        if (!settings.eyeTracking && !settings.faceTracking) {
+            Log.w(TAG, "eye and face tracking are both disabled, nothing to forward");
+            gateStatus = "eye and face tracking are both disabled";
             stopBridge();
             return START_STICKY;
         }
@@ -153,11 +153,9 @@ public final class TrackingService extends Service {
     private void startBridge() {
         Log.i(TAG, "starting bridge -> " + settings.host + ":" + settings.port
                 + " @ " + settings.rateHz + " Hz, frame rate " + settings.frameRateHz + " Hz"
-                + ", gaze " + settings.gazeTracking + ", eye " + settings.eyeTracking
-                + ", face " + settings.faceTracking);
+                + ", eye " + settings.eyeTracking + ", face " + settings.faceTracking);
         bridgeRunning = NativeCore.start(xrActivity, settings.host, settings.port,
-                settings.rateHz, settings.frameRateHz, settings.gazeTracking, settings.eyeTracking,
-                settings.faceTracking);
+                settings.rateHz, settings.frameRateHz, settings.eyeTracking, settings.faceTracking);
     }
 
     private void stopBridge() {

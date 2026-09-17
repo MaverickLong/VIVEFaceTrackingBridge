@@ -29,24 +29,6 @@ fn get_props<T>(instance: &xr::Instance, system: xr::SystemId, default_struct: T
     xr_res(result).map(|_| props)
 }
 
-pub fn supports_eye_gaze_interaction(instance: &xr::Instance, system: xr::SystemId) -> bool {
-    if instance.exts().ext_eye_gaze_interaction.is_none() {
-        return false;
-    }
-
-    get_props(
-        instance,
-        system,
-        sys::SystemEyeGazeInteractionPropertiesEXT {
-            ty: sys::SystemEyeGazeInteractionPropertiesEXT::TYPE,
-            next: ptr::null_mut(),
-            supports_eye_gaze_interaction: sys::FALSE,
-        },
-    )
-    .map(|props| props.supports_eye_gaze_interaction.into())
-    .unwrap_or(false)
-}
-
 pub struct FacialTrackerHTC {
     // Keeping a reference to the session to ensure that the tracker handle remains valid
     _session: xr::Session<xr::AnyGraphics>,

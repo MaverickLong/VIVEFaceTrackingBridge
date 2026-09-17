@@ -57,7 +57,6 @@ public final class SettingsActivity extends Activity {
     private EditText hostInput;
     private CheckBox eyeTrackingInput;
     private CheckBox faceTrackingInput;
-    private CheckBox gazeTrackingInput;
     private CheckBox alwaysForwardInput;
     private CheckBox virtualDesktopInput;
     private CheckBox steamLinkInput;
@@ -115,11 +114,8 @@ public final class SettingsActivity extends Activity {
         layout.addView(eyeTrackingInput);
         faceTrackingInput = checkBox("Face tracking (mouth, jaw, cheeks, tongue)");
         layout.addView(faceTrackingInput);
-        gazeTrackingInput = checkBox("Gaze tracking (gaze pose from the eye tracker)");
-        layout.addView(gazeTrackingInput);
-        layout.addView(label("Leave gaze off to let Virtual Desktop use the eye tracker: this makes "
-                + "it compatible with VD Eye Tracking Foveated Encoding, and VD's own VRCFT module "
-                + "supplies the gaze."));
+        layout.addView(label("The bridge does not touch the gaze data Virtual Desktop reads, which "
+                + "makes it compatible with VD Eye Tracking Foveated Encoding."));
 
         layout.addView(heading("When to forward"));
         alwaysForwardInput = checkBox("Always forward tracking data");
@@ -230,7 +226,6 @@ public final class SettingsActivity extends Activity {
             Toast.makeText(this, "Invalid port or rate", Toast.LENGTH_SHORT).show();
             return;
         }
-        settings.putBoolean(ControlProtocol.KEY_GAZE_TRACKING, gazeTrackingInput.isChecked());
         settings.putBoolean(ControlProtocol.KEY_EYE_TRACKING, eyeTrackingInput.isChecked());
         settings.putBoolean(ControlProtocol.KEY_FACE_TRACKING, faceTrackingInput.isChecked());
         settings.putBoolean(ControlProtocol.KEY_ALWAYS_FORWARD, alwaysForwardInput.isChecked());
@@ -250,9 +245,8 @@ public final class SettingsActivity extends Activity {
         settings.putString(ControlProtocol.KEY_GATE_PACKAGES,
                 ControlProtocol.joinPackageList(gatePackages));
 
-        if (!gazeTrackingInput.isChecked() && !eyeTrackingInput.isChecked()
-                && !faceTrackingInput.isChecked()) {
-            Toast.makeText(this, "Gaze, eye and face tracking are all off: nothing will be forwarded",
+        if (!eyeTrackingInput.isChecked() && !faceTrackingInput.isChecked()) {
+            Toast.makeText(this, "Eye and face tracking are both off: nothing will be forwarded",
                     Toast.LENGTH_LONG).show();
         } else if (!alwaysForwardInput.isChecked() && gatePackages.isEmpty()) {
             Toast.makeText(this, "No app selected: forwarding all the time",
@@ -306,7 +300,6 @@ public final class SettingsActivity extends Activity {
                 settings.getFloat(ControlProtocol.KEY_RATE_HZ, ControlProtocol.DEFAULT_RATE_HZ)));
         frameRateInput.setText(formatRate(settings.getFloat(
                 ControlProtocol.KEY_FRAME_RATE_HZ, ControlProtocol.DEFAULT_FRAME_RATE_HZ)));
-        gazeTrackingInput.setChecked(settings.getBoolean(ControlProtocol.KEY_GAZE_TRACKING, false));
         eyeTrackingInput.setChecked(settings.getBoolean(ControlProtocol.KEY_EYE_TRACKING, true));
         faceTrackingInput.setChecked(settings.getBoolean(ControlProtocol.KEY_FACE_TRACKING, true));
         alwaysForwardInput.setChecked(settings.getBoolean(ControlProtocol.KEY_ALWAYS_FORWARD, false));

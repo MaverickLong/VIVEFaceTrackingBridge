@@ -101,7 +101,6 @@ fn create_instance(entry: &xr::Entry, vendor: Vendor) -> Result<xr::Instance, St
 
     let mut selected_exts = xr::ExtensionSet::default();
     selected_exts.bd_facial_simulation = true;
-    selected_exts.ext_eye_gaze_interaction = true;
     selected_exts.ext_user_presence = true;
     selected_exts.fb_eye_tracking_social = true;
     selected_exts.fb_face_tracking2 = true;
@@ -220,13 +219,7 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
         .unwrap_or(xr::EnvironmentBlendMode::OPAQUE);
 
     status.set_phase("creating trackers");
-    let sources = FaceSources::new(
-        &instance,
-        &session,
-        system,
-        vendor == Vendor::Htc,
-        config.sources,
-    );
+    let sources = FaceSources::new(&session, system, vendor == Vendor::Htc, config.sources);
     if !sources.has_expressions_tracker() {
         log::warn!("no face expression tracker available on this device");
     }
@@ -341,7 +334,7 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
             next_send = now + send_interval;
         }
 
-        let face_data = sources.get_face_data(&session, &view_reference_space, poll_time);
+        let face_data = sources.get_face_data(&view_reference_space, poll_time);
         if ftbridge_protocol::encode_vrcft_packet(&face_data, &mut packet_buffer) {
             let changed = packet_buffer != previous_packet;
             previous_packet.clone_from(&packet_buffer);

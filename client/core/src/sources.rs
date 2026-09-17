@@ -1,26 +1,21 @@
 //! Face tracking source selection and polling, ported from ALVR's
 //! `interaction.rs`. All gaze poses are located against the VIEW reference
 //! space so they are heading independent.
+//!
+//! The standard gaze extension `XR_EXT_eye_gaze_interaction` is deliberately
+//! not used: it is what Virtual Desktop reads for its eye tracked foveated
+//! encoding, it only delivers to a focused session, and the VRCFT-ALVR module
+//! derives gaze from the HTC eye expressions anyway.
 
-use crate::extensions::{
-    self, EyeTrackerSocial, FaceTracker2FB, FaceTrackerBD, FacialTrackerHTC,
-};
+use crate::extensions::{EyeTrackerSocial, FaceTracker2FB, FaceTrackerBD, FacialTrackerHTC};
 use ftbridge_protocol::{FaceData, FaceExpressions};
 use openxr as xr;
-
-const EYE_GAZE_PROFILE_PATH: &str = "/interaction_profiles/ext/eye_gaze_interaction";
-const EYE_GAZE_INPUT_PATH: &str = "/user/eyes_ext/input/gaze_ext/pose";
 
 /// Which kinds of tracking to use. Disabled kinds are neither created nor polled.
 #[derive(Clone, Copy, Debug)]
 pub struct SourceFilter {
-    // Gaze poses: XR_EXT_eye_gaze_interaction and XR_FB_eye_tracking_social. Off leaves the
-    // eye tracker's gaze to the streaming app (Virtual Desktop's foveated encoding and its
-    // own VRCFT module). The VRCFT-ALVR module still derives a gaze from the HTC eye
-    // expressions below.
-    pub gaze: bool,
-    // Eye expressions (blink, wide, squeeze, look direction): the HTC eye tracker. Meta and
-    // Pico deliver these as part of the face expressions.
+    // Eye tracking: the HTC eye expressions (blink, wide, squeeze, look direction) and, on
+    // Meta, the social eye gaze. Meta and Pico deliver eye expressions with the face ones.
     pub eye: bool,
     // Face expressions: HTC lip tracker, XR_FB_face_tracking2, XR_BD_facial_simulation
     pub face: bool,
@@ -37,8 +32,6 @@ enum ExpressionsTracker {
 
 pub struct FaceSources {
     filter: SourceFilter,
-    action_set: Option<xr::ActionSet>,
-    eyes_combined: Option<(xr::Action<xr::Posef>, xr::Space)>,
     eyes_social: Option<EyeTrackerSocial>,
     expressions_tracker: Option<ExpressionsTracker>,
 }
@@ -63,56 +56,14 @@ impl FaceSources {
     /// created at startup, and must not be destroyed for the process lifetime
     /// (quirks discovered by ALVR).
     pub fn new(
-        instance: &xr::Instance,
         session: &xr::Session<xr::OpenGlEs>,
         system: xr::SystemId,
         is_vive: bool,
         filter: SourceFilter,
     ) -> Self {
-        log::info!(
-            "source filter: gaze {}, eye {}, face {}",
-            filter.gaze,
-            filter.eye,
-            filter.face
-        );
+        log::info!("source filter: eye {}, face {}", filter.eye, filter.face);
 
-        let eye_gaze_supported =
-            filter.gaze && extensions::supports_eye_gaze_interaction(instance, system);
-        log::info!("eye gaze interaction supported: {eye_gaze_supported}");
-
-        let mut action_set = None;
-        let eyes_combined = if eye_gaze_supported {
-            let combined_eyes_source = instance
-                .create_action_set("ftbridge", "FT Bridge", 0)
-                .and_then(|set| {
-                    let action =
-                        set.create_action::<xr::Posef>("combined_eye_gaze", "Combined eye gaze", &[])?;
-
-                    let res = instance.suggest_interaction_profile_bindings(
-                        instance.string_to_path(EYE_GAZE_PROFILE_PATH)?,
-                        &[xr::Binding::new(
-                            &action,
-                            instance.string_to_path(EYE_GAZE_INPUT_PATH)?,
-                        )],
-                    );
-                    if let Err(e) = res {
-                        log::warn!("failed to register combined eye gaze input: {e}");
-                    }
-
-                    let space = action.create_space(session, xr::Path::NULL, xr::Posef::IDENTITY)?;
-
-                    session.attach_action_sets(&[&set])?;
-                    action_set = Some(set);
-
-                    Ok((action, space))
-                });
-
-            check_source("combined eye gaze", combined_eyes_source)
-        } else {
-            None
-        };
-
-        let eyes_social = if filter.gaze {
+        let eyes_social = if filter.eye {
             check_source("EyeTrackerSocial", EyeTrackerSocial::new(session))
         } else {
             None
@@ -162,8 +113,6 @@ impl FaceSources {
 
         Self {
             filter,
-            action_set,
-            eyes_combined,
             eyes_social,
             expressions_tracker,
         }
@@ -176,9 +125,6 @@ impl FaceSources {
     pub fn describe(&self) -> String {
         let mut names = vec![];
 
-        if self.eyes_combined.is_some() {
-            names.push("combined gaze");
-        }
         if self.eyes_social.is_some() {
             names.push("social gaze");
         }
@@ -196,9 +142,6 @@ impl FaceSources {
             None => (),
         }
 
-        if !self.filter.gaze {
-            names.push("(gaze off)");
-        }
         if !self.filter.eye {
             names.push("(eye tracking off)");
         }
@@ -213,31 +156,7 @@ impl FaceSources {
         }
     }
 
-    pub fn get_face_data(
-        &self,
-        session: &xr::Session<xr::OpenGlEs>,
-        view_reference_space: &xr::Space,
-        time: xr::Time,
-    ) -> FaceData {
-        // The gaze action requires a focused session; failures are expected in background
-        if let Some(action_set) = &self.action_set {
-            session
-                .sync_actions(&[xr::ActiveActionSet::new(action_set)])
-                .ok();
-        }
-
-        let eyes_combined = if let Some((action, space)) = &self.eyes_combined
-            && action.is_active(session, xr::Path::NULL).unwrap_or(false)
-            && let Ok(location) = space.locate(view_reference_space, time)
-            && location
-                .location_flags
-                .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
-        {
-            Some(quat_to_array(location.pose.orientation))
-        } else {
-            None
-        };
-
+    pub fn get_face_data(&self, view_reference_space: &xr::Space, time: xr::Time) -> FaceData {
         let eyes_social = if let Some(tracker) = &self.eyes_social
             && let Ok(gazes) = tracker.get_eye_gazes(view_reference_space, time)
         {
@@ -277,7 +196,7 @@ impl FaceSources {
         };
 
         FaceData {
-            eyes_combined,
+            eyes_combined: None,
             eyes_social,
             face_expressions,
         }

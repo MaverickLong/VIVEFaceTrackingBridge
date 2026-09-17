@@ -9,6 +9,6 @@ target/
 # Android / Gradle
 client/.gradle/
 client/build/
-client/app/build/
+client/*/build/
 client/local.properties
 client/app/src/main/jniLibs/

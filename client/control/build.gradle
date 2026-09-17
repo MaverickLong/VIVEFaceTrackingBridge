@@ -1,0 +1,9 @@
+// Constants shared by the service app and the settings app (plain Java, no Android)
+plugins {
+    id 'java-library'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}

@@ -17,6 +17,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import dev.maverick.ftbridge.control.ControlProtocol;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -87,7 +89,7 @@ public final class MainActivity extends Activity {
 
         layout.addView(label("Only run while one of these apps is in the foreground (package names, "
                 + "comma separated). Needs usage access, granted by tools/provision.ps1"));
-        gateInput = input(Settings.joinPackageList(settings.gatePackages), InputType.TYPE_CLASS_TEXT);
+        gateInput = input(ControlProtocol.joinPackageList(settings.gatePackages), InputType.TYPE_CLASS_TEXT);
         layout.addView(gateInput);
 
         autostartInput = new CheckBox(this);
@@ -159,7 +161,7 @@ public final class MainActivity extends Activity {
         settings.eyeTracking = eyeTrackingInput.isChecked();
         settings.faceTracking = faceTrackingInput.isChecked();
         settings.alwaysForward = alwaysForwardInput.isChecked();
-        settings.gatePackages = Settings.parsePackageList(gateInput.getText().toString());
+        settings.gatePackages = ControlProtocol.parsePackageList(gateInput.getText().toString());
 
         store.store(settings);
         TrackingService.start(this);

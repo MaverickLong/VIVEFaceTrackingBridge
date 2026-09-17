@@ -19,6 +19,8 @@ import android.os.PowerManager;
 import android.os.Process;
 import android.util.Log;
 
+import dev.maverick.ftbridge.control.ControlProtocol;
+
 /**
  * Foreground service owning the native bridge thread. It keeps running while
  * other (VR) apps are in the foreground; whether the OpenXR runtime keeps
@@ -43,6 +45,7 @@ public final class TrackingService extends Service {
 
     /** Human readable gate state for the control panel. */
     public static volatile String gateStatus = "";
+    private static volatile boolean running;
 
     // The OpenXR runtime keeps a reference to this object for the process lifetime
     private static HeadlessActivity xrActivity;
@@ -66,6 +69,21 @@ public final class TrackingService extends Service {
         context.startService(intent);
     }
 
+    public static boolean isRunning() {
+        return running;
+    }
+
+    public static boolean hasUsageAccess(Context context) {
+        AppOpsManager appOps = context.getSystemService(AppOpsManager.class);
+        int mode = appOps.unsafeCheckOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.getPackageName());
+        if (mode == AppOpsManager.MODE_DEFAULT) {
+            return context.checkSelfPermission(android.Manifest.permission.PACKAGE_USAGE_STATS)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+        return mode == AppOpsManager.MODE_ALLOWED;
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;
@@ -82,6 +100,7 @@ public final class TrackingService extends Service {
 
         startForeground(NOTIFICATION_ID, buildNotification());
         acquireLocks();
+        running = true;
 
         Settings store = new Settings(this);
         settings = store.load();
@@ -101,11 +120,11 @@ public final class TrackingService extends Service {
             return START_STICKY;
         }
 
-        String gatePackages = Settings.joinPackageList(settings.gatePackages);
+        String gatePackages = ControlProtocol.joinPackageList(settings.gatePackages);
         if (settings.runsAlways()) {
             gateStatus = settings.alwaysForward ? "always forwarding" : "no gate apps, running always";
             startBridge();
-        } else if (!hasUsageAccess()) {
+        } else if (!hasUsageAccess(this)) {
             Log.w(TAG, "usage access not granted, cannot gate on " + gatePackages + "; running always");
             gateStatus = "usage access not granted, running always";
             startBridge();
@@ -124,6 +143,7 @@ public final class TrackingService extends Service {
     public void onDestroy() {
         handler.removeCallbacks(gateCheck);
         NativeCore.stop();
+        running = false;
         gateStatus = "";
         releaseLocks();
         super.onDestroy();
@@ -160,7 +180,7 @@ public final class TrackingService extends Service {
 
         gateStatus = bridgeRunning
                 ? "active (" + foregroundPackage + " in foreground)"
-                : "waiting for " + Settings.joinPackageList(settings.gatePackages)
+                : "waiting for " + ControlProtocol.joinPackageList(settings.gatePackages)
                         + " (foreground: " + foregroundPackage + ")";
         handler.postDelayed(gateCheck, GATE_CHECK_INTERVAL_MS);
     }
@@ -192,17 +212,6 @@ public final class TrackingService extends Service {
                     break;
             }
         }
-    }
-
-    private boolean hasUsageAccess() {
-        AppOpsManager appOps = getSystemService(AppOpsManager.class);
-        int mode = appOps.unsafeCheckOpNoThrow(
-                AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), getPackageName());
-        if (mode == AppOpsManager.MODE_DEFAULT) {
-            return checkSelfPermission(android.Manifest.permission.PACKAGE_USAGE_STATS)
-                    == PackageManager.PERMISSION_GRANTED;
-        }
-        return mode == AppOpsManager.MODE_ALLOWED;
     }
 
     private Notification buildNotification() {

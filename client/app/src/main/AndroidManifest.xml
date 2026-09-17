@@ -8,6 +8,11 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- Guards the control interface used by the settings app, which is signed with the same key -->
+    <permission
+        android:name="dev.maverick.ftbridge.permission.CONTROL"
+        android:protectionLevel="signature" />
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -71,6 +76,12 @@
             android:exported="true"
             android:permission="android.permission.DUMP"
             android:stopWithTask="false" />
+
+        <!-- Settings and status for the separate settings app -->
+        <service
+            android:name=".ControlService"
+            android:exported="true"
+            android:permission="dev.maverick.ftbridge.permission.CONTROL" />
 
         <receiver
             android:name=".BootReceiver"

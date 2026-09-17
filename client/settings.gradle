@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ftbridge"
 include ':app'
+include ':control'

@@ -11,5 +11,7 @@ target/
 client/.gradle/
 client/build/
 client/*/build/
+# IDE (VS Code Java) output
+client/*/bin/
 client/local.properties
 client/app/src/main/jniLibs/

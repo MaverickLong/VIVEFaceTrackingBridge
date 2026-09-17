@@ -36,6 +36,7 @@ public final class MainActivity extends Activity {
     private CheckBox faceTrackingInput;
     private CheckBox autostartInput;
     private EditText frameRateInput;
+    private CheckBox alwaysForwardInput;
     private EditText gateInput;
     private TextView statusView;
 
@@ -79,9 +80,14 @@ public final class MainActivity extends Activity {
         rateInput = input(String.valueOf((int) settings.rateHz), InputType.TYPE_CLASS_NUMBER);
         layout.addView(rateInput);
 
-        layout.addView(label("Only run while this app is in the foreground (package name; empty = always). "
-                + "Needs usage access, granted by tools/provision.ps1"));
-        gateInput = input(settings.gatePackage, InputType.TYPE_CLASS_TEXT);
+        alwaysForwardInput = new CheckBox(this);
+        alwaysForwardInput.setText("Always forward (ignore the app list below)");
+        alwaysForwardInput.setChecked(settings.alwaysForward);
+        layout.addView(alwaysForwardInput);
+
+        layout.addView(label("Only run while one of these apps is in the foreground (package names, "
+                + "comma separated). Needs usage access, granted by tools/provision.ps1"));
+        gateInput = input(Settings.joinPackageList(settings.gatePackages), InputType.TYPE_CLASS_TEXT);
         layout.addView(gateInput);
 
         autostartInput = new CheckBox(this);
@@ -152,7 +158,8 @@ public final class MainActivity extends Activity {
         settings.autostart = autostartInput.isChecked();
         settings.eyeTracking = eyeTrackingInput.isChecked();
         settings.faceTracking = faceTrackingInput.isChecked();
-        settings.gatePackage = gateInput.getText().toString().trim();
+        settings.alwaysForward = alwaysForwardInput.isChecked();
+        settings.gatePackages = Settings.parsePackageList(gateInput.getText().toString());
 
         store.store(settings);
         TrackingService.start(this);

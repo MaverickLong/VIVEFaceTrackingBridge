@@ -4,6 +4,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Persistent configuration. {@link Values} is the in-memory form; its keys double as the
  * extras of the START intent (adb provisioning) and of the control interface (settings app).
@@ -16,9 +20,12 @@ public final class Settings {
     // Focus Vision while Virtual Desktop streams: ~7% of one core at 10 Hz frames, ~10% at
     // 60 Hz, with the trackers polled at 60 Hz either way.
     public static final float DEFAULT_FRAME_RATE_HZ = 10f;
-    // Only run the bridge while this app is in the foreground (empty: always run). The VIVE
-    // runtime powers the trackers down anyway when no VR app is active.
-    public static final String DEFAULT_GATE_PACKAGE = "VirtualDesktop.Android";
+    // Streaming apps the bridge can be gated on (run only while one of them is in the
+    // foreground). The VIVE runtime powers the trackers down anyway when no VR app is active.
+    public static final String VIRTUAL_DESKTOP_PACKAGE = "VirtualDesktop.Android";
+    public static final String STEAM_LINK_PACKAGE = "com.valvesoftware.steamlinkvr";
+    public static final List<String> DEFAULT_GATE_PACKAGES =
+            Collections.singletonList(VIRTUAL_DESKTOP_PACKAGE);
 
     // Extra / bundle keys, e.g.:
     //   adb shell am start-foreground-service -n dev.maverick.ftbridge/.TrackingService \
@@ -30,8 +37,10 @@ public final class Settings {
     public static final String KEY_AUTOSTART = "autostart";
     public static final String KEY_EYE_TRACKING = "eye";
     public static final String KEY_FACE_TRACKING = "face";
-    // Null or empty disables gating (--esn gate)
-    public static final String KEY_GATE_PACKAGE = "gate";
+    // Forward regardless of the foreground app (ignores the gate list)
+    public static final String KEY_ALWAYS_FORWARD = "always";
+    // Comma separated package names; null or empty means no gate apps (--esn gate)
+    public static final String KEY_GATE_PACKAGES = "gate";
 
     private static final String PREFERENCES_NAME = "ftbridge";
     private static final String PREF_HOST = "host";
@@ -41,7 +50,11 @@ public final class Settings {
     private static final String PREF_FRAME_RATE = "frame_rate_hz";
     private static final String PREF_EYE_TRACKING = "eye_tracking";
     private static final String PREF_FACE_TRACKING = "face_tracking";
-    private static final String PREF_GATE_PACKAGE = "gate_package";
+    private static final String PREF_ALWAYS_FORWARD = "always_forward";
+    private static final String PREF_GATE_PACKAGES = "gate_packages";
+    // Single package of versions before the gate list
+    private static final String PREF_GATE_PACKAGE_LEGACY = "gate_package";
+    private static final String PACKAGE_LIST_SEPARATOR = ",";
 
     /** One consistent snapshot of all settings. */
     public static final class Values {
@@ -52,7 +65,13 @@ public final class Settings {
         public boolean autostart = false;
         public boolean eyeTracking = true;
         public boolean faceTracking = true;
-        public String gatePackage = DEFAULT_GATE_PACKAGE;
+        public boolean alwaysForward = false;
+        public List<String> gatePackages = new ArrayList<>(DEFAULT_GATE_PACKAGES);
+
+        /** Whether the bridge runs regardless of the foreground app. */
+        public boolean runsAlways() {
+            return alwaysForward || gatePackages.isEmpty();
+        }
 
         /** Overrides the fields whose keys are present; other fields are left alone. */
         public void applyExtras(Bundle extras) {
@@ -68,8 +87,9 @@ public final class Settings {
             autostart = extras.getBoolean(KEY_AUTOSTART, autostart);
             eyeTracking = extras.getBoolean(KEY_EYE_TRACKING, eyeTracking);
             faceTracking = extras.getBoolean(KEY_FACE_TRACKING, faceTracking);
-            if (extras.containsKey(KEY_GATE_PACKAGE)) {
-                gatePackage = trimmed(extras.getString(KEY_GATE_PACKAGE));
+            alwaysForward = extras.getBoolean(KEY_ALWAYS_FORWARD, alwaysForward);
+            if (extras.containsKey(KEY_GATE_PACKAGES)) {
+                gatePackages = parsePackageList(extras.getString(KEY_GATE_PACKAGES));
             }
         }
 
@@ -82,13 +102,33 @@ public final class Settings {
             bundle.putBoolean(KEY_AUTOSTART, autostart);
             bundle.putBoolean(KEY_EYE_TRACKING, eyeTracking);
             bundle.putBoolean(KEY_FACE_TRACKING, faceTracking);
-            bundle.putString(KEY_GATE_PACKAGE, gatePackage);
+            bundle.putBoolean(KEY_ALWAYS_FORWARD, alwaysForward);
+            bundle.putString(KEY_GATE_PACKAGES, joinPackageList(gatePackages));
             return bundle;
         }
 
         private static String trimmed(String value) {
             return value == null ? "" : value.trim();
         }
+    }
+
+    /** Splits a comma separated list of package names; blanks are dropped. */
+    public static List<String> parsePackageList(String text) {
+        List<String> packages = new ArrayList<>();
+        if (text == null) {
+            return packages;
+        }
+        for (String item : text.split(PACKAGE_LIST_SEPARATOR)) {
+            String name = item.trim();
+            if (!name.isEmpty() && !packages.contains(name)) {
+                packages.add(name);
+            }
+        }
+        return packages;
+    }
+
+    public static String joinPackageList(List<String> packages) {
+        return String.join(PACKAGE_LIST_SEPARATOR, packages);
     }
 
     private final SharedPreferences preferences;
@@ -106,7 +146,10 @@ public final class Settings {
         values.autostart = preferences.getBoolean(PREF_AUTOSTART, values.autostart);
         values.eyeTracking = preferences.getBoolean(PREF_EYE_TRACKING, values.eyeTracking);
         values.faceTracking = preferences.getBoolean(PREF_FACE_TRACKING, values.faceTracking);
-        values.gatePackage = preferences.getString(PREF_GATE_PACKAGE, values.gatePackage);
+        values.alwaysForward = preferences.getBoolean(PREF_ALWAYS_FORWARD, values.alwaysForward);
+        String gatePackages = preferences.getString(PREF_GATE_PACKAGES,
+                preferences.getString(PREF_GATE_PACKAGE_LEGACY, joinPackageList(values.gatePackages)));
+        values.gatePackages = parsePackageList(gatePackages);
         return values;
     }
 
@@ -119,7 +162,8 @@ public final class Settings {
                 .putBoolean(PREF_AUTOSTART, values.autostart)
                 .putBoolean(PREF_EYE_TRACKING, values.eyeTracking)
                 .putBoolean(PREF_FACE_TRACKING, values.faceTracking)
-                .putString(PREF_GATE_PACKAGE, values.gatePackage)
+                .putBoolean(PREF_ALWAYS_FORWARD, values.alwaysForward)
+                .putString(PREF_GATE_PACKAGES, joinPackageList(values.gatePackages))
                 .apply();
     }
 }

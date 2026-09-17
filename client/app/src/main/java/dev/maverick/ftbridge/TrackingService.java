@@ -24,7 +24,7 @@ import android.util.Log;
  * other (VR) apps are in the foreground; whether the OpenXR runtime keeps
  * serving tracking data in that state is up to the platform.
  *
- * With a gate package configured, the bridge itself only runs while that app
+ * With gate apps configured, the bridge itself only runs while one of them
  * (or this app's own control panel) is in the foreground.
  */
 public final class TrackingService extends Service {
@@ -101,12 +101,12 @@ public final class TrackingService extends Service {
             return START_STICKY;
         }
 
-        String gatePackage = settings.gatePackage;
-        if (gatePackage.isEmpty()) {
-            gateStatus = "disabled, running always";
+        String gatePackages = Settings.joinPackageList(settings.gatePackages);
+        if (settings.runsAlways()) {
+            gateStatus = settings.alwaysForward ? "always forwarding" : "no gate apps, running always";
             startBridge();
         } else if (!hasUsageAccess()) {
-            Log.w(TAG, "usage access not granted, cannot gate on " + gatePackage + "; running always");
+            Log.w(TAG, "usage access not granted, cannot gate on " + gatePackages + "; running always");
             gateStatus = "usage access not granted, running always";
             startBridge();
         } else {
@@ -146,21 +146,22 @@ public final class TrackingService extends Service {
     }
 
     private void checkGate() {
-        String gatePackage = settings.gatePackage;
         updateForegroundPackage();
 
-        boolean allowed = gatePackage.equals(foregroundPackage) || getPackageName().equals(foregroundPackage);
+        boolean allowed = settings.gatePackages.contains(foregroundPackage)
+                || getPackageName().equals(foregroundPackage);
         if (allowed && !bridgeRunning) {
             Log.i(TAG, "gate: " + foregroundPackage + " in foreground");
             startBridge();
         } else if (!allowed && bridgeRunning) {
-            Log.i(TAG, "gate: " + gatePackage + " left the foreground (now " + foregroundPackage + ")");
+            Log.i(TAG, "gate: gate app left the foreground (now " + foregroundPackage + ")");
             stopBridge();
         }
 
         gateStatus = bridgeRunning
                 ? "active (" + foregroundPackage + " in foreground)"
-                : "waiting for " + gatePackage + " (foreground: " + foregroundPackage + ")";
+                : "waiting for " + Settings.joinPackageList(settings.gatePackages)
+                        + " (foreground: " + foregroundPackage + ")";
         handler.postDelayed(gateCheck, GATE_CHECK_INTERVAL_MS);
     }
 

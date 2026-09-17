@@ -30,18 +30,8 @@ import android.util.Log;
 public final class TrackingService extends Service {
     public static final String ACTION_START = "dev.maverick.ftbridge.START";
     public static final String ACTION_STOP = "dev.maverick.ftbridge.STOP";
-
-    // Optional extras on ACTION_START, persisted to Settings. Lets the service be provisioned
-    // over adb without touching the UI, e.g.:
-    //   adb shell am start-foreground-service -n dev.maverick.ftbridge/.TrackingService \
-    //       -a dev.maverick.ftbridge.START --es host 192.168.1.10
-    public static final String EXTRA_HOST = "host";
-    public static final String EXTRA_PORT = "port";
-    public static final String EXTRA_RATE_HZ = "rate";
-    public static final String EXTRA_AUTOSTART = "autostart";
-    public static final String EXTRA_FRAME_RATE_HZ = "framerate";
-    // Null or empty disables gating (--esn gate)
-    public static final String EXTRA_GATE_PACKAGE = "gate";
+    // ACTION_START takes the Settings keys as optional extras, which are persisted. This is
+    // how the service is provisioned over adb without touching the UI.
 
     private static final String TAG = "ftbridge";
     private static final String CHANNEL_ID = "bridge";
@@ -61,7 +51,7 @@ public final class TrackingService extends Service {
     private final Runnable gateCheck = this::checkGate;
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
-    private Settings settings;
+    private Settings.Values settings;
     private boolean bridgeRunning;
     private String foregroundPackage;
     private long lastUsageQueryTime;
@@ -93,24 +83,18 @@ public final class TrackingService extends Service {
         startForeground(NOTIFICATION_ID, buildNotification());
         acquireLocks();
 
-        settings = new Settings(this);
-        if (intent != null && intent.hasExtra(EXTRA_HOST)) {
-            settings.save(
-                    intent.getStringExtra(EXTRA_HOST),
-                    intent.getIntExtra(EXTRA_PORT, settings.port()),
-                    intent.getFloatExtra(EXTRA_RATE_HZ, settings.rateHz()),
-                    intent.getBooleanExtra(EXTRA_AUTOSTART, settings.autostart()),
-                    intent.getFloatExtra(EXTRA_FRAME_RATE_HZ, settings.frameRateHz()),
-                    intent.hasExtra(EXTRA_GATE_PACKAGE)
-                            ? intent.getStringExtra(EXTRA_GATE_PACKAGE)
-                            : settings.gatePackage());
+        Settings store = new Settings(this);
+        settings = store.load();
+        if (intent != null && intent.getExtras() != null) {
+            settings.applyExtras(intent.getExtras());
+            store.store(settings);
         }
         if (xrActivity == null) {
             xrActivity = new HeadlessActivity(this);
         }
 
         handler.removeCallbacks(gateCheck);
-        String gatePackage = settings.gatePackage();
+        String gatePackage = settings.gatePackage;
         if (gatePackage.isEmpty()) {
             gateStatus = "disabled, running always";
             startBridge();
@@ -139,10 +123,10 @@ public final class TrackingService extends Service {
     }
 
     private void startBridge() {
-        Log.i(TAG, "starting bridge -> " + settings.host() + ":" + settings.port()
-                + " @ " + settings.rateHz() + " Hz, frame rate " + settings.frameRateHz() + " Hz");
-        bridgeRunning = NativeCore.start(xrActivity, settings.host(), settings.port(),
-                settings.rateHz(), settings.frameRateHz());
+        Log.i(TAG, "starting bridge -> " + settings.host + ":" + settings.port
+                + " @ " + settings.rateHz + " Hz, frame rate " + settings.frameRateHz + " Hz");
+        bridgeRunning = NativeCore.start(xrActivity, settings.host, settings.port,
+                settings.rateHz, settings.frameRateHz);
     }
 
     private void stopBridge() {
@@ -154,7 +138,7 @@ public final class TrackingService extends Service {
     }
 
     private void checkGate() {
-        String gatePackage = settings.gatePackage();
+        String gatePackage = settings.gatePackage;
         updateForegroundPackage();
 
         boolean allowed = gatePackage.equals(foregroundPackage) || getPackageName().equals(foregroundPackage);

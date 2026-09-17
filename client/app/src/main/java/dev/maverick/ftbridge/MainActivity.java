@@ -48,7 +48,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Settings settings = new Settings(this);
+        Settings.Values settings = new Settings(this).load();
 
         int padding = dp(16);
         LinearLayout layout = new LinearLayout(this);
@@ -56,30 +56,30 @@ public final class MainActivity extends Activity {
         layout.setPadding(padding, padding, padding, padding);
 
         layout.addView(label("PC address (IP of the machine running VRCFaceTracking)"));
-        hostInput = input(settings.host(), InputType.TYPE_CLASS_TEXT);
+        hostInput = input(settings.host, InputType.TYPE_CLASS_TEXT);
         layout.addView(hostInput);
 
         layout.addView(label("Port (VRCFT-ALVR module listens on " + Settings.DEFAULT_PORT + ")"));
-        portInput = input(String.valueOf(settings.port()), InputType.TYPE_CLASS_NUMBER);
+        portInput = input(String.valueOf(settings.port), InputType.TYPE_CLASS_NUMBER);
         layout.addView(portInput);
 
         layout.addView(label("Poll/send rate (Hz). The VIVE trackers sample at " + (int) Settings.DEFAULT_RATE_HZ));
-        rateInput = input(String.valueOf((int) settings.rateHz()), InputType.TYPE_CLASS_NUMBER);
+        rateInput = input(String.valueOf((int) settings.rateHz), InputType.TYPE_CLASS_NUMBER);
         layout.addView(rateInput);
 
         layout.addView(label("Only run while this app is in the foreground (package name; empty = always). "
                 + "Needs usage access, granted by tools/provision.ps1"));
-        gateInput = input(settings.gatePackage(), InputType.TYPE_CLASS_TEXT);
+        gateInput = input(settings.gatePackage, InputType.TYPE_CLASS_TEXT);
         layout.addView(gateInput);
 
         autostartInput = new CheckBox(this);
         autostartInput.setText("Start automatically after boot");
-        autostartInput.setChecked(settings.autostart());
+        autostartInput.setChecked(settings.autostart);
         layout.addView(autostartInput);
 
         layout.addView(label("OpenXR frame rate (Hz). Keeps the session running: lower = less CPU, "
                 + "0 = no frames (no tracker data on VIVE). Default " + (int) Settings.DEFAULT_FRAME_RATE_HZ));
-        frameRateInput = input(String.valueOf((int) settings.frameRateHz()), InputType.TYPE_CLASS_NUMBER);
+        frameRateInput = input(String.valueOf((int) settings.frameRateHz), InputType.TYPE_CLASS_NUMBER);
         layout.addView(frameRateInput);
 
         LinearLayout buttons = new LinearLayout(this);
@@ -126,20 +126,21 @@ public final class MainActivity extends Activity {
             return;
         }
 
-        int port;
-        float rateHz;
-        float frameRateHz;
+        Settings store = new Settings(this);
+        Settings.Values settings = store.load();
+        settings.host = host;
         try {
-            port = Integer.parseInt(portInput.getText().toString().trim());
-            rateHz = Float.parseFloat(rateInput.getText().toString().trim());
-            frameRateHz = Float.parseFloat(frameRateInput.getText().toString().trim());
+            settings.port = Integer.parseInt(portInput.getText().toString().trim());
+            settings.rateHz = Float.parseFloat(rateInput.getText().toString().trim());
+            settings.frameRateHz = Float.parseFloat(frameRateInput.getText().toString().trim());
         } catch (NumberFormatException e) {
             Toast.makeText(this, "Invalid port or rate", Toast.LENGTH_SHORT).show();
             return;
         }
+        settings.autostart = autostartInput.isChecked();
+        settings.gatePackage = gateInput.getText().toString().trim();
 
-        new Settings(this).save(host, port, rateHz, autostartInput.isChecked(), frameRateHz,
-                gateInput.getText().toString());
+        store.store(settings);
         TrackingService.start(this);
     }
 

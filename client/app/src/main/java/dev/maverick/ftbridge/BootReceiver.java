@@ -11,8 +11,8 @@ public final class BootReceiver extends BroadcastReceiver {
             return;
         }
 
-        Settings settings = new Settings(context);
-        if (settings.autostart() && !settings.host().isEmpty()) {
+        Settings.Values settings = new Settings(context).load();
+        if (settings.autostart && !settings.host.isEmpty()) {
             TrackingService.start(context);
         }
     }

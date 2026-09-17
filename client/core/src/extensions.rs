@@ -7,7 +7,7 @@ use openxr::{
 };
 use std::ptr;
 
-fn xr_res(result: sys::Result) -> xr::Result<()> {
+pub fn xr_res(result: sys::Result) -> xr::Result<()> {
     if result.into_raw() >= 0 {
         Ok(())
     } else {
@@ -15,7 +15,9 @@ fn xr_res(result: sys::Result) -> xr::Result<()> {
     }
 }
 
-fn get_props<T>(instance: &xr::Instance, system: xr::SystemId, default_struct: T) -> xr::Result<T> {
+/// Queries system properties with an extension struct chained in (`default_struct` must
+/// have its `ty` set).
+pub fn get_props<T>(instance: &xr::Instance, system: xr::SystemId, default_struct: T) -> xr::Result<T> {
     let mut props = default_struct;
     let mut system_properties = sys::SystemProperties::out((&raw mut props).cast());
     let result = unsafe {

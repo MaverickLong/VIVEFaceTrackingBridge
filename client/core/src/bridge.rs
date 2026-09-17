@@ -8,9 +8,12 @@
 
 use crate::{
     egl_context::EglContext,
+    htc_eye_tracker,
+    probe::EyeProbe,
     sources::{FaceSources, SourceFilter},
     status::Status,
 };
+use ftbridge_protocol::FaceExpressions;
 use openxr as xr;
 use std::{
     ffi::CString,
@@ -38,6 +41,13 @@ pub struct Config {
     pub frame_rate_hz: f32,
     // Which trackers to use; the others are never created
     pub sources: SourceFilter,
+    // Diagnostics: also poll XR_HTC_eye_tracker and log its samples (see probe.rs)
+    pub eye_probe: bool,
+}
+
+/// What `create_instance` enabled beyond what the openxr crate tracks itself.
+struct ExtraExtensions {
+    htc_eye_tracker: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -86,7 +96,10 @@ fn xr_now(instance: &xr::Instance) -> Option<xr::Time> {
     (result.into_raw() >= 0).then_some(time)
 }
 
-fn create_instance(entry: &xr::Entry, vendor: Vendor) -> Result<xr::Instance, String> {
+fn create_instance(
+    entry: &xr::Entry,
+    vendor: Vendor,
+) -> Result<(xr::Instance, ExtraExtensions), String> {
     let available_exts = entry
         .enumerate_extensions()
         .map_err(|e| format!("xrEnumerateInstanceExtensionProperties failed: {e}"))?;
@@ -108,11 +121,18 @@ fn create_instance(entry: &xr::Entry, vendor: Vendor) -> Result<xr::Instance, St
     selected_exts.khr_android_create_instance = true;
     selected_exts.khr_convert_timespec_time = true;
     selected_exts.khr_opengl_es_enable = true;
+    // Unknown to the openxr crate: nul-terminated names, kept only if the runtime has them
+    let htc_eye_tracker_name = format!("{}\0", htc_eye_tracker::EXTENSION_NAME).into_bytes();
+    selected_exts.other.push(htc_eye_tracker_name.clone());
     let selected_exts = selected_exts.intersection(&available_exts);
 
     if !selected_exts.khr_opengl_es_enable {
         return Err("runtime does not support XR_KHR_opengl_es_enable".into());
     }
+    let extra = ExtraExtensions {
+        htc_eye_tracker: selected_exts.other.contains(&htc_eye_tracker_name),
+    };
+    log::info!("XR_HTC_eye_tracker enabled: {}", extra.htc_eye_tracker);
 
     let version_candidates = match vendor {
         Vendor::Htc => vec![LEGACY_OPENXR_VERSION],
@@ -132,7 +152,7 @@ fn create_instance(entry: &xr::Entry, vendor: Vendor) -> Result<xr::Instance, St
             &selected_exts,
             &[],
         ) {
-            Ok(instance) => return Ok(instance),
+            Ok(instance) => return Ok((instance, extra)),
             Err(e) => last_error = format!("xrCreateInstance (api {api_version}) failed: {e}"),
         }
     }
@@ -177,7 +197,7 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
         .map_err(|e| format!("xrInitializeLoaderKHR failed: {e}"))?;
 
     status.set_phase("creating instance");
-    let instance = create_instance(&entry, vendor)?;
+    let (instance, extra_extensions) = create_instance(&entry, vendor)?;
     if let Ok(props) = instance.properties() {
         log::info!("runtime: {} {}", props.runtime_name, props.runtime_version);
         status.set_runtime_name(&format!("{} {}", props.runtime_name, props.runtime_version));
@@ -224,6 +244,24 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
         log::warn!("no face expression tracker available on this device");
     }
     status.set_sources(&sources.describe());
+
+    let mut eye_probe = if !config.eye_probe {
+        None
+    } else if !extra_extensions.htc_eye_tracker {
+        log::warn!("eye probe: XR_HTC_eye_tracker is not available on this runtime");
+        None
+    } else {
+        match EyeProbe::new(session.clone(), system) {
+            Ok(probe) => {
+                log::info!("eye probe: XR_HTC_eye_tracker created");
+                Some(probe)
+            }
+            Err(e) => {
+                log::warn!("eye probe: cannot create the XR_HTC_eye_tracker tracker: {e}");
+                None
+            }
+        }
+    };
 
     let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| format!("cannot bind UDP socket: {e}"))?;
     socket.set_broadcast(true).ok();
@@ -335,6 +373,16 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
         }
 
         let face_data = sources.get_face_data(&view_reference_space, poll_time);
+        if let Some(probe) = &mut eye_probe {
+            let eye_expressions = match &face_data.face_expressions {
+                Some(FaceExpressions::Htc {
+                    eye: Some(weights), ..
+                }) => Some(weights.as_slice()),
+                _ => None,
+            };
+            probe.record(&view_reference_space, poll_time, eye_expressions);
+        }
+
         if ftbridge_protocol::encode_vrcft_packet(&face_data, &mut packet_buffer) {
             let changed = packet_buffer != previous_packet;
             previous_packet.clone_from(&packet_buffer);

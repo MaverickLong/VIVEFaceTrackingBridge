@@ -9,6 +9,10 @@ mod egl_context;
 #[cfg(target_os = "android")]
 mod extensions;
 #[cfg(target_os = "android")]
+mod htc_eye_tracker;
+#[cfg(target_os = "android")]
+mod probe;
+#[cfg(target_os = "android")]
 mod sources;
 #[cfg(target_os = "android")]
 mod status;
@@ -99,6 +103,7 @@ mod android {
         frame_rate_hz: jfloat,
         eye_tracking: jboolean,
         face_tracking: jboolean,
+        eye_probe: jboolean,
     ) -> jboolean {
         init_once(&mut env, &context);
 
@@ -106,6 +111,7 @@ mod android {
             eye: eye_tracking != jni::sys::JNI_FALSE,
             face: face_tracking != jni::sys::JNI_FALSE,
         };
+        let eye_probe = eye_probe != jni::sys::JNI_FALSE;
 
         let host = env
             .get_string(&host)
@@ -142,6 +148,7 @@ mod android {
                     rate_hz,
                     frame_rate_hz,
                     sources,
+                    eye_probe,
                 };
                 let result = panic::catch_unwind(|| bridge::run(config, &thread_stop, &STATUS));
 

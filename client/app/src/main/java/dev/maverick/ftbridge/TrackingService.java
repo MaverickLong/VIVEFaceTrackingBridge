@@ -35,6 +35,9 @@ public final class TrackingService extends Service {
     public static final String ACTION_STOP = "dev.maverick.ftbridge.STOP";
     // ACTION_START takes the Settings keys as optional extras, which are persisted. This is
     // how the service is provisioned over adb without touching the UI.
+    // Diagnostics, not persisted: run the bridge regardless of the gate and log
+    // XR_HTC_eye_tracker samples (tools/probe-eye-tracker.ps1). Cleared by the next START.
+    public static final String EXTRA_EYE_PROBE = "eyeprobe";
 
     private static final String TAG = "ftbridge";
     private static final String CHANNEL_ID = "bridge";
@@ -69,6 +72,7 @@ public final class TrackingService extends Service {
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
     private Settings.Values settings;
+    private boolean eyeProbe;
     private boolean bridgeRunning;
     private String foregroundPackage;
     private long lastUsageQueryTime;
@@ -122,6 +126,7 @@ public final class TrackingService extends Service {
             settings.applyExtras(intent.getExtras());
             store.store(settings);
         }
+        eyeProbe = intent != null && intent.getBooleanExtra(EXTRA_EYE_PROBE, false);
         if (xrActivity == null) {
             xrActivity = new HeadlessActivity(this);
         }
@@ -139,7 +144,11 @@ public final class TrackingService extends Service {
         }
 
         String gatePackages = ControlProtocol.joinPackageList(settings.gatePackages);
-        if (settings.runsAlways()) {
+        if (eyeProbe) {
+            Log.i(TAG, "eye probe: running regardless of the gate");
+            gateStatus = "eye probe, running always";
+            handler.post(startWhenReady);
+        } else if (settings.runsAlways()) {
             gateStatus = settings.alwaysForward ? "always forwarding" : "no gate apps, running always";
             handler.post(startWhenReady);
         } else if (!hasUsageAccess(this)) {
@@ -170,9 +179,11 @@ public final class TrackingService extends Service {
     private boolean startBridge() {
         Log.i(TAG, "starting bridge -> " + settings.host + ":" + settings.port
                 + " @ " + settings.rateHz + " Hz, frame rate " + settings.frameRateHz + " Hz"
-                + ", eye " + settings.eyeTracking + ", face " + settings.faceTracking);
+                + ", eye " + settings.eyeTracking + ", face " + settings.faceTracking
+                + (eyeProbe ? ", eye probe" : ""));
         bridgeRunning = NativeCore.start(xrActivity, settings.host, settings.port,
-                settings.rateHz, settings.frameRateHz, settings.eyeTracking, settings.faceTracking);
+                settings.rateHz, settings.frameRateHz, settings.eyeTracking, settings.faceTracking,
+                eyeProbe);
         return bridgeRunning;
     }
 

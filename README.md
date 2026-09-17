@@ -4,9 +4,10 @@ A minimal, standalone Android app for VIVE (and other OpenXR) headsets that stre
 eye and face tracking data to a PC running [VRCFaceTracking](https://github.com/benaclejames/VRCFaceTracking)
 with the [VRCFT-ALVR module](https://github.com/alvr-org/VRCFT-ALVR). It runs as a background
 service, so it works alongside Virtual Desktop, Steam Link or any other streaming app.
-No PC-side component is required! A small settings app on the headset lets you change the
-PC address, switch eye and face tracking separately and pick which streaming apps the bridge
-starts with.
+No PC-side component is required!
+
+The bridge is now compatible with Virtual Desktop's Eye Tracking Foveated Encoding.
+You do NOT need to install Virtual Desktop's VRCFT module for eyegaze to work.
 
 The design and the OpenXR face tracking code are derived from [ALVR](https://github.com/alvr-org/ALVR)
 (see [LICENSE](LICENSE)). Thank you to the ALVR team for their outstanding work!
@@ -21,6 +22,7 @@ The design and the OpenXR face tracking code are derived from [ALVR](https://git
 | VIVE Focus 3            | ❓ (Untested but should work)     |
 | VIVE XR Elite           | ❓ (Untested but should work)     |
 | Pico 4 Pro / Enterprise | ❓ (Untested but API implemented) |
+| Quest Pro | ❓ (Untested but API implemented; why would you though?) |
 
 In essence, any OpenXR headset exposing `XR_HTC_facial_tracking`, `XR_FB_face_tracking2`,
 `XR_FB_eye_tracking_social` or `XR_BD_facial_simulation` running Android 12 or higher should work.
@@ -36,41 +38,28 @@ In essence, any OpenXR headset exposing `XR_HTC_facial_tracking`, `XR_FB_face_tr
    [release](https://github.com/MaverickLong/VIVEFaceTrackingBridge/releases/latest) and unzip
    it.
 2. Enable USB debugging on the headset settings and connect it over USB.
-3. Double-click `Setup.cmd`. It fetches adb from Google if needed, waits for the headset,
-   detects this PC's address, installs the two apps (the FT Bridge service and FT Bridge
-   Settings), exempts the service from battery optimization, grants usage access (to detect
-   when Virtual Desktop is in the foreground), enables autostart and starts the service.
+3. Double-click `Setup.cmd`. This the recommended way to install the app on the headset.
    Unplug afterwards; the cable is only needed for setup.
-   **This sets up the bridge to run with Virtual Desktop. To use Steam Link or another
+   **By default, the bridge runs only with Virtual Desktop. To use Steam Link or another
    streaming app instead (or as well), open FT Bridge Settings on the headset, see below.**
 4. Start VRCFaceTracking on the PC, then use the headset normally. In VRChat the avatar's
    eyes and mouth follow yours through the ALVR module.
 
 ### Changing settings on the headset
 
-Quit the streaming app, open **FT Bridge Settings** from the headset's app library, change
-what you need and tap *Apply and start*: the PC address, eye tracking and face tracking on or
-off, always forward, or auto-start with Virtual Desktop, Steam Link or a custom app (package
-name). The values the PC setup provisioned are shown there. The status area at the bottom
-shows what the service is doing (session state, sources, packets sent). Closing the app, or
-the headset stopping it when a VR app starts, does not affect the service.
-
-The bridge never reads the standard gaze extension (`XR_EXT_eye_gaze_interaction`), which
-is what Virtual Desktop uses for its eye tracked foveated encoding; the two run side by side,
-which makes the bridge compatible with **VD Eye Tracking Foveated Encoding**. The avatar's
-gaze still works: VIVE's eye expression data includes the look direction, and the ALVR module
-derives gaze from it.
+Open **FT Bridge Settings** from the headset's app library, change what you need and tap
+*Apply and start*. Afterwards, simply close the settings and return to your streaming app.
 
 `README.txt` inside the zip has the same steps plus troubleshooting.
 
 ## Important Notices
 
 1. **The FT bridge may not work when other apps have the eye / face tracking data.**
-   Please turn other apps' eye / face tracking (or eye-tracking based foveated encoding) off
+   Please turn other apps' eye / face tracking off (except gaze-only apps like VD or Steam Link)
    when using this app to avoid potential compatibility issues.
 2. At current stage, the FT bridge does not have auto client discovery and relies on a fixed IP
    address set at installation time. If the PC's IP changes, enter the new one in FT Bridge
-   Settings on the headset (no cable needed), or plug in the headset and re-run `Setup.cmd`.
+   Settings on the headset, or plug in the headset and re-run `Setup.cmd`.
 3. The mainstream [VRCFT-ALVR](https://github.com/alvr-org/VRCFT-ALVR) has bugs parsing some specific
    mouth shapekeys. For now I recommend using
    [this VRCFT-ALVR fork](https://github.com/AzumiYura/VRCFT-ALVR/tree/fix_htcftmapping).

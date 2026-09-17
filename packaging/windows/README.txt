@@ -35,10 +35,9 @@ window) and FT Bridge Settings. To change something:
 2. Open "FT Bridge Settings" from the headset's app library.
 3. Change what you need and tap "Apply and start":
    - PC address, if this PC's network address changed.
-   - Eye tracking / Face tracking on or off.
-   - Gaze tracking: leave it off to let Virtual Desktop use the eye tracker.
-     This makes it compatible with VD Eye Tracking Foveated Encoding; VD's
-     own VRCFT module then provides the gaze.
+   - Eye tracking / Face tracking on or off. (The bridge does not touch the
+     gaze data Virtual Desktop uses, so VD Eye Tracking Foveated Encoding
+     keeps working alongside it.)
    - Always forward, or auto-start with Virtual Desktop, Steam Link or any
      other app (enter its package name).
    - The status area at the bottom shows what the service is doing.

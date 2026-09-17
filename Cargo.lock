@@ -68,14 +68,14 @@ dependencies = [
 
 [[package]]
 name = "ftbridge_cli"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "ftbridge_protocol",
 ]
 
 [[package]]
 name = "ftbridge_core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "android_logger",
  "ftbridge_protocol",
@@ -89,7 +89,7 @@ dependencies = [
 
 [[package]]
 name = "ftbridge_protocol"
-version = "0.1.0"
+version = "1.0.0"
 
 [[package]]
 name = "jni"

@@ -13,7 +13,6 @@
         android:label="FT Bridge Settings"
         android:allowBackup="false"
         android:theme="@android:style/Theme.DeviceDefault">
-
         <!-- Launchable, so the VIVE system force-stops this app whenever a VR app gains focus.
              That is harmless: the bridge itself runs in dev.maverick.ftbridge, which has no
              activity and is therefore left alone. -->

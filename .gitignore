@@ -4,6 +4,8 @@ VRCFT-ALVR
 CLAUDE.md
 .vscode/
 
+# Local only build files
+*.localonly
 # Rust
 target/
 

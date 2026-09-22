@@ -50,4 +50,5 @@ android {
 
 dependencies {
     implementation project(':control')
+    implementation project(':companion')
 }

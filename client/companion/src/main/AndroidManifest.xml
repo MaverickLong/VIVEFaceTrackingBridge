@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="com.htc.companionservice.permission.ACCESS_COMPANION_SERVICE" />
+    <queries>
+        <package android:name="com.htc.gatthmdservice" />
+    </queries>
+    <application>
+        <service
+            android:name="dev.maverick.ftbridge.companion.CompanionBridgeService"
+            android:process="com.htc.gatthmdservice"
+            android:exported="false" />
+    </application>
+</manifest>

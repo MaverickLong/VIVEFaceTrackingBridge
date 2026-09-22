@@ -21,16 +21,20 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import dev.maverick.ftbridge.control.ControlProtocol;
+import dev.maverick.ftbridge.companion.CompanionClient;
+import dev.maverick.ftbridge.companion.VrConfigClient;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletionException;
 
 /**
  * Settings and live status of the FT Bridge service.
@@ -54,6 +58,16 @@ public final class SettingsActivity extends Activity {
     // The fields are filled from the service once per connection, so edits are not
     // overwritten
     private boolean fieldsLoaded;
+
+    private static final String EYE_WIDE_KEY = "eye_wide_feature_enable";
+    private Switch eyeWideInput;
+    private TextView eyeWideStatus;
+    private CompanionClient companionClient;
+    private VrConfigClient vrConfig;
+    private boolean eyeWideUpdating;
+    private boolean eyeWideConfirmed;
+    private boolean eyeWideBusy;
+    private int eyeWideRequestId;
 
     private EditText hostInput;
     private CheckBox eyeTrackingInput;
@@ -107,6 +121,20 @@ public final class SettingsActivity extends Activity {
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(padding, padding, padding, padding);
 
+        eyeWideInput = new Switch(this);
+        eyeWideInput.setText("Unlock VIVE Eye Widening");
+        eyeWideInput.setEnabled(false);
+        eyeWideInput.setOnCheckedChangeListener((view, checked) -> {
+            if (eyeWideUpdating) return;
+            // Keep displaying the confirmed value until the headset reads it back.
+            showEyeWide(eyeWideConfirmed);
+            requestEyeWide(checked);
+        });
+        layout.addView(eyeWideInput);
+        eyeWideStatus = label("Reading the headset setting ...");
+        eyeWideStatus.setPadding(0, 0, 0, padding);
+        layout.addView(eyeWideStatus);
+
         layout.addView(label("PC address (IP of the machine running VRCFaceTracking)"));
         hostInput = input("", InputType.TYPE_CLASS_TEXT);
         layout.addView(hostInput);
@@ -154,6 +182,7 @@ public final class SettingsActivity extends Activity {
         buttons.addView(button("Apply and start", this::apply));
         buttons.addView(button("Stop service", () -> send(ControlProtocol.MSG_STOP, null)));
         buttons.addView(button("Reload", () -> {
+            if (!eyeWideBusy) requestEyeWide(null);
             fieldsLoaded = false;
             send(ControlProtocol.MSG_GET_STATE, null);
         }));
@@ -175,6 +204,9 @@ public final class SettingsActivity extends Activity {
     @Override
     protected void onStart() {
         super.onStart();
+        companionClient = new CompanionClient(this);
+        vrConfig = new VrConfigClient(companionClient);
+        requestEyeWide(null);
         Intent intent = new Intent().setComponent(new ComponentName(
                 ControlProtocol.SERVICE_PACKAGE, ControlProtocol.CONTROL_SERVICE_CLASS));
         bindRequested = true;
@@ -197,12 +229,61 @@ public final class SettingsActivity extends Activity {
 
     @Override
     protected void onStop() {
+        ++eyeWideRequestId;
+        vrConfig = null;
+        if (companionClient != null) {
+            companionClient.close();
+            companionClient = null;
+        }
+        eyeWideBusy = false;
         if (bindRequested) {
             unbindService(connection);
             bindRequested = false;
         }
         control = null;
         super.onStop();
+    }
+
+    private void showEyeWide(boolean enabled) {
+        eyeWideUpdating = true;
+        eyeWideInput.setChecked(enabled);
+        eyeWideUpdating = false;
+    }
+
+    private void eyeWideError(String error) {
+        ++eyeWideRequestId; // Ignore a late response from an expired request.
+        eyeWideBusy = false;
+        eyeWideInput.setEnabled(false);
+        showEyeWide(eyeWideConfirmed);
+        eyeWideStatus.setText("Unavailable: " + error);
+    }
+
+    private void requestEyeWide(Boolean enabled) {
+        if (vrConfig == null) {
+            eyeWideError("Eye widening is not connected. Reopen settings to retry.");
+            return;
+        }
+        eyeWideBusy = true;
+        eyeWideInput.setEnabled(false);
+        eyeWideStatus.setText(enabled == null ? "Reading the headset setting ..." : "Applying ...");
+        int requestId = ++eyeWideRequestId;
+        (enabled == null ? vrConfig.getBoolean(EYE_WIDE_KEY) : vrConfig.setBoolean(EYE_WIDE_KEY, enabled))
+                .whenComplete((actual, failure) -> runOnUiThread(() -> {
+                    if (vrConfig == null || requestId != eyeWideRequestId) return;
+                    if (failure != null) {
+                        Throwable error = failure;
+                        while (error instanceof CompletionException && error.getCause() != null) {
+                            error = error.getCause();
+                        }
+                        eyeWideError(error.getMessage() == null ? "HTC service request failed" : error.getMessage());
+                        return;
+                    }
+                    eyeWideBusy = false;
+                    eyeWideConfirmed = actual;
+                    showEyeWide(actual);
+                    eyeWideInput.setEnabled(true);
+                    eyeWideStatus.setText("Headset-wide setting. Changes apply immediately.");
+                }));
     }
 
     private void apply() {

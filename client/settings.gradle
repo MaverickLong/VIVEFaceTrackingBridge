@@ -18,3 +18,4 @@ rootProject.name = "ftbridge"
 include ':app'
 include ':control'
 include ':panel'
+include ':companion'

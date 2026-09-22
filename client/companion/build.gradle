@@ -1,0 +1,40 @@
+plugins {
+    id 'com.android.library'
+}
+
+android {
+    namespace 'dev.maverick.ftbridge.companion'
+    compileSdk 31
+    buildToolsVersion '36.0.0'
+
+    defaultConfig {
+        minSdk 29
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// Dependency-free JVM tests exercise captured HTC messages and the public typed API.
+def protocolTests = tasks.register('compileProtocolTests', JavaCompile) {
+    source files(
+        'src/main/java/dev/maverick/ftbridge/companion/CommandCaller.java',
+        'src/main/java/dev/maverick/ftbridge/companion/VrConfigProtocol.java',
+        'src/main/java/dev/maverick/ftbridge/companion/VrConfigClient.java',
+        'src/test/java/dev/maverick/ftbridge/companion/VrConfigClientTest.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('protocol-tests')
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
+}
+
+tasks.register('testProtocol', JavaExec) {
+    dependsOn protocolTests
+    classpath = files(protocolTests.flatMap { it.destinationDirectory })
+    mainClass = 'dev.maverick.ftbridge.companion.VrConfigClientTest'
+}
+
+tasks.named('check') { dependsOn 'testProtocol' }

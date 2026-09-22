@@ -50,6 +50,13 @@ In essence, any OpenXR headset exposing `XR_HTC_facial_tracking`, `XR_FB_face_tr
 Open **FT Bridge Settings** from the headset's app library, change what you need and tap
 *Apply and start*. Afterwards, simply close the settings and return to your streaming app.
 
+The **Unlock VIVE Eye Widening** toggle unlocks the eye widening feature of a compatible VIVE headset.
+It applies immediately to the headset and does
+not require *Apply and start* or the bridge to be actively forwarding data. If it is
+unavailable, use *Reload* or reopen settings to retry.
+
+This is an experimental feature and is expected to work poorly on most headsets except for the XR Elite.
+
 `README.txt` inside the zip has the same steps plus troubleshooting.
 
 ## Important Notices

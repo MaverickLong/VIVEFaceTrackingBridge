@@ -160,20 +160,18 @@ public final class SettingsActivity extends Activity {
         layout.addView(customAppPackageInput);
 
         layout.addView(heading("Service"));
-        autostartInput = checkBox("Start the service after the headset boots");
+        autostartInput = checkBox("Auto-start the service after the headset boots");
         layout.addView(autostartInput);
 
         layout.addView(heading("Advanced"));
-        layout.addView(label("Port (the VRCFT-ALVR module listens on " + ControlProtocol.DEFAULT_PORT + ")"));
+        layout.addView(label("Port (default: " + ControlProtocol.DEFAULT_PORT + ")"));
         portInput = input("", InputType.TYPE_CLASS_NUMBER);
         layout.addView(portInput);
-        layout.addView(label("Poll/send rate (Hz). The VIVE trackers sample at "
+        layout.addView(label("Face tracking frequency (Hz). Default: "
                 + (int) ControlProtocol.DEFAULT_RATE_HZ));
         rateInput = input("", InputType.TYPE_CLASS_NUMBER);
         layout.addView(rateInput);
-        layout.addView(label("OpenXR frame rate (Hz). Keeps the session running: lower = less CPU, "
-                + "0 = no frames (no tracker data on VIVE). Default "
-                + (int) ControlProtocol.DEFAULT_FRAME_RATE_HZ));
+        layout.addView(label("OpenXR frame rate (Hz). This is NOT the face tracking frequency and should not be changed"));
         frameRateInput = input("", InputType.TYPE_CLASS_NUMBER);
         layout.addView(frameRateInput);
 

@@ -19,8 +19,8 @@ The design and the OpenXR face tracking code are derived from [ALVR](https://git
 | Headset                 | Compatibility                     |
 | ----------------------- | --------------------------------- |
 | VIVE Focus Vision       | ✅ (Tested)                       |
+| VIVE XR Elite           | ✅ (Tested)                       |
 | VIVE Focus 3            | ❓ (Untested but should work)     |
-| VIVE XR Elite           | ❓ (Untested but should work)     |
 | Pico 4 Pro / Enterprise | ❓ (Untested but API implemented) |
 | Quest Pro | ❓ (Untested but API implemented; why would you though?) |
 
@@ -118,7 +118,7 @@ the bridge runs).
 | Always forward | off | Ignore the app list and forward whenever the service runs |
 | Auto-start with apps | `VirtualDesktop.Android` | The bridge (OpenXR session, polling) only runs while one of these packages, or FT Bridge Settings, is in the foreground; the panel offers Virtual Desktop, Steam Link (`com.valvesoftware.steamlinkvr`) and a custom package. An empty list behaves like always forward. Needs usage access, which `provision.ps1` grants over adb (`appops set dev.maverick.ftbridge android:get_usage_stats allow`); without it the bridge runs always. The VIVE runtime powers the trackers down when no VR app is active anyway. |
 | Poll/send rate | 60 Hz | The VIVE trackers sample at 60 Hz |
-| OpenXR frame rate | 10 Hz | Independent of the poll rate. The runtime only serves tracker data to a running session, which requires submitting (empty) frames; their rate does not affect the tracker samples. Fewer frames cost less CPU: ~7% of one core at 10 Hz, ~10% at 60 Hz on the Focus Vision. 0 disables frames (no data on VIVE). |
+| OpenXR frame rate | 10 Hz | **This is not the face tracking frequency.** Independent of the poll rate. The runtime only serves tracker data to a running session, which requires submitting (empty) frames; their rate does not affect the tracker samples. Fewer frames cost less CPU: ~7% of one core at 10 Hz, ~10% at 60 Hz on the Focus Vision. 0 disables frames (no data on VIVE). |
 | Autostart | off | Start the service after boot |
 
 Everything can also be set over adb (the keys are in `client/control`), e.g.:

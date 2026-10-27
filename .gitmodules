@@ -1,0 +1,3 @@
+[submodule "VRCFT-ALVR"]
+	path = VRCFT-ALVR
+	url = git@github.com:MaverickLong/VRCFT-ALVR.git

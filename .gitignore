@@ -1,8 +1,8 @@
 platform-tools
 ALVR
-VRCFT-ALVR
 CLAUDE.md
 .vscode/
+.claude*
 
 # Local only build files
 *.localonly

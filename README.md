@@ -57,11 +57,12 @@ unavailable, use *Reload* or reopen settings to retry.
 
 This is an experimental feature and is expected to work poorly on most headsets except for the XR Elite.
 
-**Enable Accurate Eye Tracking** (VIVE, off by default) also sends the VIVE eye tracker's
+**Enable Accurate Eye Tracking** (VIVE, on by default) also sends the VIVE eye tracker's
 per-eye gaze, pupil size, eye openness, wide and squeeze, which replace the values derived
 from the eye expressions. It needs our fork of the VRCFT-ALVR module (the `VRCFT-ALVR`
 submodule of this repository) on the PC; the original module does not understand the extra
-data and logs errors. The fork still works with the original ALVR and with this toggle off.
+data and logs errors, so turn this off if you stay with the original module. The fork still
+works with the original ALVR and with this toggle off.
 
 `README.txt` inside the zip has the same steps plus troubleshooting.
 
@@ -92,7 +93,7 @@ With adb on the PC and both APKs built:
 tools\provision.ps1 -PcAddress 192.168.1.10 -Autostart
 tools\provision.ps1 -PcAddress 192.168.1.10 -Autostart -GateApps VirtualDesktop.Android,com.valvesoftware.steamlinkvr
 tools\provision.ps1 -PcAddress 192.168.1.10 -Always -NoFace     # forward eye tracking only, regardless of the app
-tools\provision.ps1 -PcAddress 192.168.1.10 -Autostart -AccurateEye   # accurate eye tracking (needs the VRCFT-ALVR fork)
+tools\provision.ps1 -PcAddress 192.168.1.10 -Autostart -NoAccurateEye   # for the original VRCFT-ALVR module
 ```
 
 This does everything `Setup.cmd` does except fetching adb and detecting the address.
@@ -121,7 +122,7 @@ the bridge runs).
 |---|---|---|
 | PC address / port | – / 41463 | Where the VRCFT-ALVR module listens |
 | Eye tracking | on | The HTC eye expression tracker (`XR_HTC_facial_tracking`, eye): blink, wide, squeeze and the look-direction weights, from which the VRCFT-ALVR module derives gaze. On Meta this is the social eye gaze (`XR_FB_eye_tracking_social`); Meta and Pico deliver eye expressions with the face ones. Off: never created. With eye and face both off nothing is forwarded. |
-| Accurate eye tracking | off | VIVE only, part of eye tracking. Also polls `XR_HTC_eye_tracker` and sends everything it reports (per-eye gaze pose, pupil diameter and position, openness, wide, squeeze) in an extra `EyeTrHtc` segment after the others. **Needs our VRCFT-ALVR fork** (the `VRCFT-ALVR` submodule): it overrides gaze, openness, pupil diameter, wide and squeeze (and the brows emulated from them) per eye, holds gaze and pupil size through blinks, and ignores pupil position and eye position (VRCFaceTracking has no use for them). The stock module applies everything before the segment and then logs errors for it. Polled only while the user is present and the eye expressions are active, with a 1 s pause after any error: the VIVE runtime can abort the process when this extension is polled with the eye tracker stopped. |
+| Accurate eye tracking | on | VIVE only, part of eye tracking. Also polls `XR_HTC_eye_tracker` and sends everything it reports (per-eye gaze pose, pupil diameter and position, openness, wide, squeeze) in an extra `EyeTrHtc` segment after the others. **Needs our VRCFT-ALVR fork** (the `VRCFT-ALVR` submodule): it overrides gaze, openness, pupil diameter, wide and squeeze (and the brows emulated from them) per eye, holds gaze and pupil size through blinks, and ignores pupil position and eye position (VRCFaceTracking has no use for them). The stock module applies everything before the segment and then logs errors for it, so turn this off with the stock module. Polled only while the user is present and the eye expressions are active, with a 1 s pause after any error: the VIVE runtime can abort the process when this extension is polled with the eye tracker stopped. |
 | Face tracking | on | HTC lip tracker, Meta and Pico expression trackers. Off: never created. |
 | Always forward | off | Ignore the app list and forward whenever the service runs |
 | Auto-start with apps | `VirtualDesktop.Android` | The bridge (OpenXR session, polling) only runs while one of these packages, or FT Bridge Settings, is in the foreground; the panel offers Virtual Desktop, Steam Link (`com.valvesoftware.steamlinkvr`) and a custom package. An empty list behaves like always forward. Needs usage access, which `provision.ps1` grants over adb (`appops set dev.maverick.ftbridge android:get_usage_stats allow`); without it the bridge runs always. The VIVE runtime powers the trackers down when no VR app is active anyway. |
@@ -134,7 +135,7 @@ Everything can also be set over adb (the keys are in `client/control`), e.g.:
 ```
 adb shell am start-foreground-service -n dev.maverick.ftbridge/.TrackingService \
     -a dev.maverick.ftbridge.START --es host 192.168.1.10 --ei port 41463 \
-    --ef rate 60 --ef framerate 10 --ez autostart true --ez eye true --ez accurateeye false \
+    --ef rate 60 --ef framerate 10 --ez autostart true --ez eye true --ez accurateeye true \
     --ez face true --ez always false --es gate VirtualDesktop.Android,com.valvesoftware.steamlinkvr
 adb shell am startservice -n dev.maverick.ftbridge/.TrackingService -a dev.maverick.ftbridge.STOP
 adb logcat -s ftbridge:*      # status heartbeat every 5 s

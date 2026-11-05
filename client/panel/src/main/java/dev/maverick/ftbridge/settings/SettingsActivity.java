@@ -136,16 +136,16 @@ public final class SettingsActivity extends Activity {
         eyeWideStatus.setPadding(0, 0, 0, padding);
         layout.addView(eyeWideStatus);
 
-        layout.addView(label("PC address (IP of the machine running VRCFaceTracking)"));
+        layout.addView(label("PC Address"));
         hostInput = input("", InputType.TYPE_CLASS_TEXT);
         layout.addView(hostInput);
 
-        eyeTrackingInput = checkBox("Eye tracking (blink, wide, squeeze, eye direction)");
+        eyeTrackingInput = checkBox("Enable Eye tracking");
         eyeTrackingInput.setOnCheckedChangeListener((view, checked) -> updateEyeInputs());
         layout.addView(eyeTrackingInput);
-        accurateEyeInput = checkBox("Enable Accurate Eye Tracking");
+        accurateEyeInput = checkBox("Enable Extended Eye Tracking Shapekeys");
         layout.addView(accurateEyeInput);
-        faceTrackingInput = checkBox("Face tracking (mouth, jaw, cheeks, tongue)");
+        faceTrackingInput = checkBox("Enable Face tracking");
         layout.addView(faceTrackingInput);
 
         layout.addView(heading("When to forward"));
@@ -171,8 +171,8 @@ public final class SettingsActivity extends Activity {
         layout.addView(label("Port (default: " + ControlProtocol.DEFAULT_PORT + ")"));
         portInput = input("", InputType.TYPE_CLASS_NUMBER);
         layout.addView(portInput);
-        layout.addView(label("Face tracking frequency (Hz). Default: "
-                + (int) ControlProtocol.DEFAULT_RATE_HZ));
+        layout.addView(label("Face tracking frequency (Hz) (default: "
+                + (int) ControlProtocol.DEFAULT_RATE_HZ + ")"));
         rateInput = input("", InputType.TYPE_CLASS_NUMBER);
         layout.addView(rateInput);
         layout.addView(label("OpenXR frame rate (Hz). This is NOT the face tracking frequency and should not be changed"));

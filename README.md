@@ -2,13 +2,9 @@
 
 A minimal, standalone Android app for VIVE (and other OpenXR) headsets that streams
 eye and face tracking data to a PC running [VRCFaceTracking](https://github.com/benaclejames/VRCFaceTracking)
-with our fork of the [VRCFT-ALVR module](https://github.com/alvr-org/VRCFT-ALVR), which comes with
-every release. It runs as a background
-service, so it works alongside Virtual Desktop, Steam Link or any other streaming app.
-No PC-side component is required!
+with our fork of the [VRCFT-ALVR module](https://github.com/alvr-org/VRCFT-ALVR).
 
-The bridge is now compatible with Virtual Desktop's Eye Tracking Foveated Encoding.
-You do NOT need to install Virtual Desktop's VRCFT module for eyegaze to work.
+It runs as a background service, and it works alongside Virtual Desktop, Steam Link or any other streaming app. No extra PC-side component is required!
 
 The design and the OpenXR face tracking code are derived from [ALVR](https://github.com/alvr-org/ALVR)
 (see [LICENSE](LICENSE)). Thank you to the ALVR team for their outstanding work!
@@ -22,8 +18,6 @@ The design and the OpenXR face tracking code are derived from [ALVR](https://git
 | VIVE Focus Vision       | ✅ (Tested)                       |
 | VIVE XR Elite           | ✅ (Tested)                       |
 | VIVE Focus 3            | ❓ (Untested but should work)     |
-| Pico 4 Pro / Enterprise | ❓ (Untested but API implemented) |
-| Quest Pro | ❓ (Untested but API implemented; why would you though?) |
 
 In essence, any OpenXR headset exposing `XR_HTC_facial_tracking`, `XR_FB_face_tracking2`,
 `XR_FB_eye_tracking_social` or `XR_BD_facial_simulation` running Android 12 or higher should work.
@@ -43,31 +37,34 @@ In essence, any OpenXR headset exposing `XR_HTC_facial_tracking`, `XR_FB_face_tr
    Unplug afterwards; the cable is only needed for setup.
    **By default, the bridge runs only with Virtual Desktop. To use Steam Link or another
    streaming app instead (or as well), open FT Bridge Settings on the headset, see below.**
-4. Install our ALVR module in VRCFaceTracking. If you have the original ALVR module,
-   uninstall it in the Module Registry and restart VRCFaceTracking first. Then click
+4. Install our ALVR module in VRCFaceTracking. If you have any other module instealled,
+   uninstall them in the Module Registry and restart VRCFaceTracking first. Then click
    *Install Module from .zip* in the Module Registry and pick `FTBridge-ALVRModule-<version>.zip`
    (a separate download on the release page, also inside the Windows zip).
+   **Please do not install the Virtual Desktop VRCFT module.**
 5. Start VRCFaceTracking on the PC, then use the headset normally. In VRChat the avatar's
    eyes and mouth follow yours through the ALVR module.
 
+## Compatible Feature Lists
+
+The FT Bridge enables or is compatible with the following features:
+
+- Forwarding accurate eye / face tracking data to VRCFT, including per-eye gaze, pupil dilation
+and eye widening
+- Using alongside with Virtual Desktop / SteamLink's eye tracking-based foveated streaming
+- Force enabling the "Eye Widening" feature of VIVE standalone headsets*
+
+*: This is not a stable feature. You will find it very hard to make a "eye wide" expression
+even with this enabled, unless using some very specific system versions of the XR Elite.
+
+It sends a flag to the OS to stop capping the eye widening expression at value 0, so it works with basically any streamer (like the stock ALVR) that uses VIVE's eye tracking props, even without the FT Bridge actively forwarding data by itself.
+
 ### Changing settings on the headset
 
-Open **FT Bridge Settings** from the headset's app library, change what you need and tap
-*Apply and start*. Afterwards, simply close the settings and return to your streaming app.
-
-The **Unlock VIVE Eye Widening** toggle unlocks the eye widening feature of a compatible VIVE headset.
-It applies immediately to the headset and does
-not require *Apply and start* or the bridge to be actively forwarding data. If it is
-unavailable, use *Reload* or reopen settings to retry.
-
-This is an experimental feature and is expected to work poorly on most headsets except for the XR Elite.
-
-**Enable Accurate Eye Tracking** (VIVE, on by default) also sends the VIVE eye tracker's
-per-eye gaze, pupil size, eye openness, wide and squeeze, which replace the values derived
-from the eye expressions. It needs our fork of the VRCFT-ALVR module (the `VRCFT-ALVR`
-submodule of this repository) on the PC; the original module does not understand the extra
-data and logs errors, so turn this off if you stay with the original module. The fork still
-works with the original ALVR and with this toggle off.
+1. Open **FT Bridge Settings** from the headset's app library (you might only find it in "2D Applications")
+2. Change what you need
+3. **Tap Apply and start** unless changing the Unlock VIVE Eye Widening toggle
+4. Close the settings and return to your streaming app.
 
 `README.txt` inside the zip has the same steps plus troubleshooting.
 
@@ -79,10 +76,8 @@ works with the original ALVR and with this toggle off.
 2. At current stage, the FT bridge does not have auto client discovery and relies on a fixed IP
    address set at installation time. If the PC's IP changes, enter the new one in FT Bridge
    Settings on the headset, or plug in the headset and re-run `Setup.cmd`.
-3. The mainstream [VRCFT-ALVR](https://github.com/alvr-org/VRCFT-ALVR) has bugs parsing some specific
-   mouth shapekeys. Our fork, the module zip in every release, includes fixes partially ported
-   from [AzumiYura's fork](https://github.com/AzumiYura/VRCFT-ALVR/tree/fix_htcftmapping) and
-   the SRanipal module.
+3. In order to have full support for the eye expression features, please use our VRCFT-ALVR fork
+in the releases page. **Please do not install the Virtual Desktop VRCFT module.**
 4. This is not official VIVE / Virtual Desktop / VRCFT software, there is strictly no affiliation
    with any of the entities.
 
@@ -125,10 +120,10 @@ the bridge runs).
 
 | Setting | Default | Notes |
 |---|---|---|
-| PC address / port | – / 41463 | Where the VRCFT-ALVR module listens |
-| Eye tracking | on | The HTC eye expression tracker (`XR_HTC_facial_tracking`, eye): blink, wide, squeeze and the look-direction weights, from which the VRCFT-ALVR module derives gaze. On Meta this is the social eye gaze (`XR_FB_eye_tracking_social`); Meta and Pico deliver eye expressions with the face ones. Off: never created. With eye and face both off nothing is forwarded. |
-| Accurate eye tracking | on | VIVE only, part of eye tracking. Also polls `XR_HTC_eye_tracker` and sends everything it reports (per-eye gaze pose, pupil diameter and position, openness, wide, squeeze) in an extra `EyeTrHtc` segment after the others. **Needs our VRCFT-ALVR fork** (the `VRCFT-ALVR` submodule): it overrides gaze, openness, pupil diameter, wide and squeeze (and the brows emulated from them) per eye, holds gaze and pupil size through blinks, and ignores pupil position and eye position (VRCFaceTracking has no use for them). The stock module applies everything before the segment and then logs errors for it, so turn this off with the stock module. Polled only while the user is present and the eye expressions are active, with a 1 s pause after any error: the VIVE runtime can abort the process when this extension is polled with the eye tracker stopped. |
-| Face tracking | on | HTC lip tracker, Meta and Pico expression trackers. Off: never created. |
+| PC IP Address / Port | – / 41463 | Where the VRCFT-ALVR module listens |
+| Enable Eye tracking | on | The HTC eye expression tracker (`XR_HTC_facial_tracking`, eye): blink, wide, squeeze and the look-direction weights, from which the VRCFT-ALVR module derives gaze. On Meta this is the social eye gaze (`XR_FB_eye_tracking_social`); Meta and Pico deliver eye expressions with the face ones. Off: never created. With eye and face both off nothing is forwarded. |
+| Enable Extended Eye Tracking Shapekeys | on | VIVE only, part of eye tracking. Also polls `XR_HTC_eye_tracker` and sends everything it reports (per-eye gaze pose, pupil diameter and position, openness, wide, squeeze) in an extra `EyeTrHtc` segment after the others. **Needs our VRCFT-ALVR fork** (the `VRCFT-ALVR` submodule): it overrides gaze, openness, pupil diameter, wide and squeeze (and the brows emulated from them) per eye, holds gaze and pupil size through blinks, and ignores pupil position and eye position (VRCFaceTracking has no use for them). The stock module applies everything before the segment and then logs errors for it, so turn this off with the stock module. Polled only while the user is present and the eye expressions are active, with a 1 s pause after any error: the VIVE runtime can abort the process when this extension is polled with the eye tracker stopped. |
+| Enable Face tracking | on | HTC lip tracker, Meta and Pico expression trackers. Off: never created. |
 | Always forward | off | Ignore the app list and forward whenever the service runs |
 | Auto-start with apps | `VirtualDesktop.Android` | The bridge (OpenXR session, polling) only runs while one of these packages, or FT Bridge Settings, is in the foreground; the panel offers Virtual Desktop, Steam Link (`com.valvesoftware.steamlinkvr`) and a custom package. An empty list behaves like always forward. Needs usage access, which `provision.ps1` grants over adb (`appops set dev.maverick.ftbridge android:get_usage_stats allow`); without it the bridge runs always. The VIVE runtime powers the trackers down when no VR app is active anyway. |
 | Poll/send rate | 60 Hz | The VIVE trackers sample at 60 Hz |

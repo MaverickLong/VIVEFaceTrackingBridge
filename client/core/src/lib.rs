@@ -9,6 +9,8 @@ mod egl_context;
 #[cfg(target_os = "android")]
 mod extensions;
 #[cfg(target_os = "android")]
+mod htc_eye_tracker;
+#[cfg(target_os = "android")]
 mod sources;
 #[cfg(target_os = "android")]
 mod status;
@@ -98,12 +100,14 @@ mod android {
         rate_hz: jfloat,
         frame_rate_hz: jfloat,
         eye_tracking: jboolean,
+        accurate_eye: jboolean,
         face_tracking: jboolean,
     ) -> jboolean {
         init_once(&mut env, &context);
 
         let sources = SourceFilter {
             eye: eye_tracking != jni::sys::JNI_FALSE,
+            accurate_eye: accurate_eye != jni::sys::JNI_FALSE,
             face: face_tracking != jni::sys::JNI_FALSE,
         };
 

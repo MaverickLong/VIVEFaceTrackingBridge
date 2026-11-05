@@ -170,9 +170,11 @@ public final class TrackingService extends Service {
     private boolean startBridge() {
         Log.i(TAG, "starting bridge -> " + settings.host + ":" + settings.port
                 + " @ " + settings.rateHz + " Hz, frame rate " + settings.frameRateHz + " Hz"
-                + ", eye " + settings.eyeTracking + ", face " + settings.faceTracking);
+                + ", eye " + settings.eyeTracking + (settings.accurateEye ? " (accurate)" : "")
+                + ", face " + settings.faceTracking);
         bridgeRunning = NativeCore.start(xrActivity, settings.host, settings.port,
-                settings.rateHz, settings.frameRateHz, settings.eyeTracking, settings.faceTracking);
+                settings.rateHz, settings.frameRateHz, settings.eyeTracking, settings.accurateEye,
+                settings.faceTracking);
         return bridgeRunning;
     }
 

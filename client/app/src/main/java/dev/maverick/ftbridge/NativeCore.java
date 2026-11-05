@@ -18,12 +18,15 @@ public final class NativeCore {
      *                    (see core/src/bridge.rs)
      * @param eyeTracking  use the HTC eye expression tracker (blink, wide, squeeze, direction)
      *                     and Meta's social eye gaze
+     * @param accurateEye  with eye tracking on VIVE: also send XR_HTC_eye_tracker's per-eye gaze,
+     *                     pupil and eye geometry (needs our VRCFT-ALVR module fork on the PC)
      * @param faceTracking use the face trackers (HTC lip, Meta, Pico expressions)
      * @return true if the bridge is running afterwards; false if a previous instance is still
      *         shutting down (retry later) or the arguments were rejected (see status())
      */
     public static native boolean start(Context context, String host, int port, float rateHz,
-                                       float frameRateHz, boolean eyeTracking, boolean faceTracking);
+                                       float frameRateHz, boolean eyeTracking, boolean accurateEye,
+                                       boolean faceTracking);
 
     /** Requests the bridge thread to stop; returns immediately. */
     public static native void stop();

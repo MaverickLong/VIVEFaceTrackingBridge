@@ -8,6 +8,7 @@
 
 use crate::{
     egl_context::EglContext,
+    htc_eye_tracker,
     sources::{FaceSources, SourceFilter},
     status::Status,
 };
@@ -38,6 +39,11 @@ pub struct Config {
     pub frame_rate_hz: f32,
     // Which trackers to use; the others are never created
     pub sources: SourceFilter,
+}
+
+/// What `create_instance` enabled beyond what the openxr crate tracks itself.
+struct ExtraExtensions {
+    htc_eye_tracker: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -86,7 +92,11 @@ fn xr_now(instance: &xr::Instance) -> Option<xr::Time> {
     (result.into_raw() >= 0).then_some(time)
 }
 
-fn create_instance(entry: &xr::Entry, vendor: Vendor) -> Result<xr::Instance, String> {
+fn create_instance(
+    entry: &xr::Entry,
+    vendor: Vendor,
+    sources: SourceFilter,
+) -> Result<(xr::Instance, ExtraExtensions), String> {
     let available_exts = entry
         .enumerate_extensions()
         .map_err(|e| format!("xrEnumerateInstanceExtensionProperties failed: {e}"))?;
@@ -108,11 +118,20 @@ fn create_instance(entry: &xr::Entry, vendor: Vendor) -> Result<xr::Instance, St
     selected_exts.khr_android_create_instance = true;
     selected_exts.khr_convert_timespec_time = true;
     selected_exts.khr_opengl_es_enable = true;
+    // Unknown to the openxr crate: nul-terminated names, kept only if the runtime has them.
+    // Only requested when used, so the instance is unchanged with accurate eye tracking off
+    let htc_eye_tracker_name = format!("{}\0", htc_eye_tracker::EXTENSION_NAME).into_bytes();
+    if vendor == Vendor::Htc && sources.eye && sources.accurate_eye {
+        selected_exts.other.push(htc_eye_tracker_name.clone());
+    }
     let selected_exts = selected_exts.intersection(&available_exts);
 
     if !selected_exts.khr_opengl_es_enable {
         return Err("runtime does not support XR_KHR_opengl_es_enable".into());
     }
+    let extra = ExtraExtensions {
+        htc_eye_tracker: selected_exts.other.contains(&htc_eye_tracker_name),
+    };
 
     let version_candidates = match vendor {
         Vendor::Htc => vec![LEGACY_OPENXR_VERSION],
@@ -132,7 +151,7 @@ fn create_instance(entry: &xr::Entry, vendor: Vendor) -> Result<xr::Instance, St
             &selected_exts,
             &[],
         ) {
-            Ok(instance) => return Ok(instance),
+            Ok(instance) => return Ok((instance, extra)),
             Err(e) => last_error = format!("xrCreateInstance (api {api_version}) failed: {e}"),
         }
     }
@@ -177,7 +196,7 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
         .map_err(|e| format!("xrInitializeLoaderKHR failed: {e}"))?;
 
     status.set_phase("creating instance");
-    let instance = create_instance(&entry, vendor)?;
+    let (instance, extra_extensions) = create_instance(&entry, vendor, config.sources)?;
     if let Ok(props) = instance.properties() {
         log::info!("runtime: {} {}", props.runtime_name, props.runtime_version);
         status.set_runtime_name(&format!("{} {}", props.runtime_name, props.runtime_version));
@@ -219,7 +238,13 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
         .unwrap_or(xr::EnvironmentBlendMode::OPAQUE);
 
     status.set_phase("creating trackers");
-    let sources = FaceSources::new(&session, system, vendor == Vendor::Htc, config.sources);
+    let sources = FaceSources::new(
+        &session,
+        system,
+        vendor == Vendor::Htc,
+        config.sources,
+        extra_extensions.htc_eye_tracker,
+    );
     if !sources.has_expressions_tracker() {
         log::warn!("no face expression tracker available on this device");
     }
@@ -287,6 +312,7 @@ pub fn run(config: Config, stop: &AtomicBool, status: &Status) -> Result<(), Str
                 }
                 xr::Event::UserPresenceChangedEXT(event) => {
                     log::info!("user present: {}", event.is_user_present());
+                    sources.set_user_present(event.is_user_present());
                 }
                 _ => (),
             }

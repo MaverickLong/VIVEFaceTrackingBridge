@@ -29,6 +29,7 @@ public final class Settings {
     private static final String PREF_AUTOSTART = "autostart";
     private static final String PREF_FRAME_RATE = "frame_rate_hz";
     private static final String PREF_EYE_TRACKING = "eye_tracking";
+    private static final String PREF_ACCURATE_EYE = "accurate_eye";
     private static final String PREF_FACE_TRACKING = "face_tracking";
     private static final String PREF_ALWAYS_FORWARD = "always_forward";
     private static final String PREF_GATE_PACKAGES = "gate_packages";
@@ -43,6 +44,8 @@ public final class Settings {
         public float frameRateHz = DEFAULT_FRAME_RATE_HZ;
         public boolean autostart = false;
         public boolean eyeTracking = true;
+        // Off by default: the stock VRCFT-ALVR module does not know the extra segment
+        public boolean accurateEye = false;
         public boolean faceTracking = true;
         public boolean alwaysForward = false;
         public List<String> gatePackages = new ArrayList<>(DEFAULT_GATE_PACKAGES);
@@ -65,6 +68,7 @@ public final class Settings {
             frameRateHz = extras.getFloat(ControlProtocol.KEY_FRAME_RATE_HZ, frameRateHz);
             autostart = extras.getBoolean(ControlProtocol.KEY_AUTOSTART, autostart);
             eyeTracking = extras.getBoolean(ControlProtocol.KEY_EYE_TRACKING, eyeTracking);
+            accurateEye = extras.getBoolean(ControlProtocol.KEY_ACCURATE_EYE, accurateEye);
             faceTracking = extras.getBoolean(ControlProtocol.KEY_FACE_TRACKING, faceTracking);
             alwaysForward = extras.getBoolean(ControlProtocol.KEY_ALWAYS_FORWARD, alwaysForward);
             if (extras.containsKey(ControlProtocol.KEY_GATE_PACKAGES)) {
@@ -81,6 +85,7 @@ public final class Settings {
             bundle.putFloat(ControlProtocol.KEY_FRAME_RATE_HZ, frameRateHz);
             bundle.putBoolean(ControlProtocol.KEY_AUTOSTART, autostart);
             bundle.putBoolean(ControlProtocol.KEY_EYE_TRACKING, eyeTracking);
+            bundle.putBoolean(ControlProtocol.KEY_ACCURATE_EYE, accurateEye);
             bundle.putBoolean(ControlProtocol.KEY_FACE_TRACKING, faceTracking);
             bundle.putBoolean(ControlProtocol.KEY_ALWAYS_FORWARD, alwaysForward);
             bundle.putString(ControlProtocol.KEY_GATE_PACKAGES,
@@ -107,6 +112,7 @@ public final class Settings {
         values.frameRateHz = preferences.getFloat(PREF_FRAME_RATE, values.frameRateHz);
         values.autostart = preferences.getBoolean(PREF_AUTOSTART, values.autostart);
         values.eyeTracking = preferences.getBoolean(PREF_EYE_TRACKING, values.eyeTracking);
+        values.accurateEye = preferences.getBoolean(PREF_ACCURATE_EYE, values.accurateEye);
         values.faceTracking = preferences.getBoolean(PREF_FACE_TRACKING, values.faceTracking);
         values.alwaysForward = preferences.getBoolean(PREF_ALWAYS_FORWARD, values.alwaysForward);
         String gatePackages = preferences.getString(PREF_GATE_PACKAGES,
@@ -124,6 +130,7 @@ public final class Settings {
                 .putFloat(PREF_FRAME_RATE, values.frameRateHz)
                 .putBoolean(PREF_AUTOSTART, values.autostart)
                 .putBoolean(PREF_EYE_TRACKING, values.eyeTracking)
+                .putBoolean(PREF_ACCURATE_EYE, values.accurateEye)
                 .putBoolean(PREF_FACE_TRACKING, values.faceTracking)
                 .putBoolean(PREF_ALWAYS_FORWARD, values.alwaysForward)
                 .putString(PREF_GATE_PACKAGES, ControlProtocol.joinPackageList(values.gatePackages))

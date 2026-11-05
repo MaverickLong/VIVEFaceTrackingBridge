@@ -71,6 +71,7 @@ public final class SettingsActivity extends Activity {
 
     private EditText hostInput;
     private CheckBox eyeTrackingInput;
+    private CheckBox accurateEyeInput;
     private CheckBox faceTrackingInput;
     private CheckBox alwaysForwardInput;
     private CheckBox virtualDesktopInput;
@@ -140,7 +141,10 @@ public final class SettingsActivity extends Activity {
         layout.addView(hostInput);
 
         eyeTrackingInput = checkBox("Eye tracking (blink, wide, squeeze, eye direction)");
+        eyeTrackingInput.setOnCheckedChangeListener((view, checked) -> updateEyeInputs());
         layout.addView(eyeTrackingInput);
+        accurateEyeInput = checkBox("Enable Accurate Eye Tracking");
+        layout.addView(accurateEyeInput);
         faceTrackingInput = checkBox("Face tracking (mouth, jaw, cheeks, tongue)");
         layout.addView(faceTrackingInput);
 
@@ -197,6 +201,7 @@ public final class SettingsActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         setContentView(scroll);
         updateGateInputs();
+        updateEyeInputs();
     }
 
     @Override
@@ -305,6 +310,7 @@ public final class SettingsActivity extends Activity {
             return;
         }
         settings.putBoolean(ControlProtocol.KEY_EYE_TRACKING, eyeTrackingInput.isChecked());
+        settings.putBoolean(ControlProtocol.KEY_ACCURATE_EYE, accurateEyeInput.isChecked());
         settings.putBoolean(ControlProtocol.KEY_FACE_TRACKING, faceTrackingInput.isChecked());
         settings.putBoolean(ControlProtocol.KEY_ALWAYS_FORWARD, alwaysForwardInput.isChecked());
         settings.putBoolean(ControlProtocol.KEY_AUTOSTART, autostartInput.isChecked());
@@ -379,6 +385,7 @@ public final class SettingsActivity extends Activity {
         frameRateInput.setText(formatRate(settings.getFloat(
                 ControlProtocol.KEY_FRAME_RATE_HZ, ControlProtocol.DEFAULT_FRAME_RATE_HZ)));
         eyeTrackingInput.setChecked(settings.getBoolean(ControlProtocol.KEY_EYE_TRACKING, true));
+        accurateEyeInput.setChecked(settings.getBoolean(ControlProtocol.KEY_ACCURATE_EYE, false));
         faceTrackingInput.setChecked(settings.getBoolean(ControlProtocol.KEY_FACE_TRACKING, true));
         alwaysForwardInput.setChecked(settings.getBoolean(ControlProtocol.KEY_ALWAYS_FORWARD, false));
         autostartInput.setChecked(settings.getBoolean(ControlProtocol.KEY_AUTOSTART, false));
@@ -392,6 +399,11 @@ public final class SettingsActivity extends Activity {
             customAppPackageInput.setText(ControlProtocol.joinPackageList(gatePackages));
         }
         updateGateInputs();
+    }
+
+    /** Accurate eye tracking is part of eye tracking. */
+    private void updateEyeInputs() {
+        accurateEyeInput.setEnabled(eyeTrackingInput.isChecked());
     }
 
     /**

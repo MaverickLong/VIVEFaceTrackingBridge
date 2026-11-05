@@ -6,7 +6,9 @@
 //! `vrcft-cli send` impersonates the headset: sends synthetic animated packets,
 //! verifying the PC -> VRCFT -> VRChat path without the headset.
 
-use ftbridge_protocol::{FaceData, FaceExpressions, VRCFT_PORT};
+use ftbridge_protocol::{
+    FaceData, FaceExpressions, HtcEyeGaze, HtcEyeGeometry, HtcEyeTrackerEye, VRCFT_PORT,
+};
 use std::{
     net::UdpSocket,
     process::ExitCode,
@@ -19,6 +21,7 @@ const HTC_RIGHT_BLINK: usize = 2;
 const HTC_JAW_OPEN: usize = 3;
 const HTC_MOUTH_SMILE_RIGHT: usize = 12;
 const HTC_MOUTH_SMILE_LEFT: usize = 13;
+const ACCURATE_GAZE_MAX_YAW_DEGREES: f32 = 30.0;
 
 fn print_usage() {
     eprintln!(
@@ -29,7 +32,9 @@ fn print_usage() {
 
   vrcft-cli send [target] [preset] [rate_hz]
       Send synthetic packets to <target> (default 127.0.0.1:{VRCFT_PORT}).
-      Presets: blink, jaw, smile, all (default), neutral."
+      Presets: blink, jaw, smile, all (default), neutral, accurate.
+      accurate sends the EyeTrHtc segment (gaze sweeping left/right, pupil size,
+      eye wide), which only our fork of the VRCFT-ALVR module understands."
     );
 }
 
@@ -117,11 +122,32 @@ fn send(target: &str, preset: &str, rate_hz: f32) -> Result<(), String> {
                 lip[HTC_MOUTH_SMILE_LEFT] = 1.0 - wave;
                 lip[HTC_MOUTH_SMILE_RIGHT] = 1.0 - wave;
             }
-            "neutral" => (),
+            "neutral" | "accurate" => (),
             other => return Err(format!("unknown preset: {other}")),
         }
 
+        let htc_eye_tracker = (preset == "accurate").then(|| {
+            // Looking right is a negative rotation about +Y
+            let yaw = (wave * 2.0 - 1.0) * ACCURATE_GAZE_MAX_YAW_DEGREES.to_radians();
+            let eye = HtcEyeTrackerEye {
+                gaze: Some(HtcEyeGaze {
+                    orientation: [0.0, (-yaw / 2.0).sin(), 0.0, (-yaw / 2.0).cos()],
+                    position: [0.0; 3],
+                }),
+                pupil_diameter_mm: Some(2.0 + 6.0 * wave),
+                pupil_position: Some([0.5, 0.5]),
+                geometry: Some(HtcEyeGeometry {
+                    openness: 1.0,
+                    wide: wave,
+                    squeeze: 0.0,
+                }),
+            };
+
+            [eye; 2]
+        });
+
         let face_data = FaceData {
+            htc_eye_tracker,
             face_expressions: Some(FaceExpressions::Htc {
                 eye: Some(eye),
                 lip: Some(lip),

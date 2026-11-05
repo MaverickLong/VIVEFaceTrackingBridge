@@ -44,8 +44,8 @@ public final class Settings {
         public float frameRateHz = DEFAULT_FRAME_RATE_HZ;
         public boolean autostart = false;
         public boolean eyeTracking = true;
-        // Off by default: the stock VRCFT-ALVR module does not know the extra segment
-        public boolean accurateEye = false;
+        // Needs our VRCFT-ALVR module fork: the stock module does not know the extra segment
+        public boolean accurateEye = true;
         public boolean faceTracking = true;
         public boolean alwaysForward = false;
         public List<String> gatePackages = new ArrayList<>(DEFAULT_GATE_PACKAGES);

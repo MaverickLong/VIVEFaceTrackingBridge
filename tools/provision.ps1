@@ -4,7 +4,7 @@
 #
 #   tools\provision.ps1 -PcAddress 192.168.1.10 [-Autostart] [-Port 41463] [-Rate 60] [-FrameRate 10]
 #                       [-GateApps VirtualDesktop.Android,com.valvesoftware.steamlinkvr] [-Always]
-#                       [-NoEye] [-NoFace] [-AccurateEye]
+#                       [-NoEye] [-NoFace] [-NoAccurateEye]
 #
 # Everything set here can be changed later in the FT Bridge Settings app on the headset.
 
@@ -17,9 +17,9 @@ param(
     [string[]]$GateApps = @("VirtualDesktop.Android"),
     # Forward regardless of the foreground app
     [switch]$Always,
-    # VIVE: also send XR_HTC_eye_tracker's gaze, pupil and eye geometry. Only with our VRCFT-ALVR
-    # module fork on the PC; the stock module logs errors for it
-    [switch]$AccurateEye,
+    # VIVE: don't send XR_HTC_eye_tracker's gaze, pupil and eye geometry. Needed with the stock
+    # VRCFT-ALVR module, which logs errors for it; our module fork understands it
+    [switch]$NoAccurateEye,
     [switch]$NoEye,
     [switch]$NoFace,
     [switch]$Autostart,
@@ -93,7 +93,7 @@ foreach ($permission in $trackingPermissions) {
 $autostartValue = if ($Autostart) { "true" } else { "false" }
 $alwaysValue = if ($Always) { "true" } else { "false" }
 $eyeValue = if ($NoEye) { "false" } else { "true" }
-$accurateEyeValue = if ($AccurateEye) { "true" } else { "false" }
+$accurateEyeValue = if ($NoAccurateEye) { "false" } else { "true" }
 $faceValue = if ($NoFace) { "false" } else { "true" }
 $gateList = @($GateApps | Where-Object { $_ }) -join ","
 $gateText = if ($Always -or -not $gateList) { "always" } else { "only while $gateList runs" }

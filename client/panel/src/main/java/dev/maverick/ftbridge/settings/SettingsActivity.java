@@ -385,7 +385,7 @@ public final class SettingsActivity extends Activity {
         frameRateInput.setText(formatRate(settings.getFloat(
                 ControlProtocol.KEY_FRAME_RATE_HZ, ControlProtocol.DEFAULT_FRAME_RATE_HZ)));
         eyeTrackingInput.setChecked(settings.getBoolean(ControlProtocol.KEY_EYE_TRACKING, true));
-        accurateEyeInput.setChecked(settings.getBoolean(ControlProtocol.KEY_ACCURATE_EYE, false));
+        accurateEyeInput.setChecked(settings.getBoolean(ControlProtocol.KEY_ACCURATE_EYE, true));
         faceTrackingInput.setChecked(settings.getBoolean(ControlProtocol.KEY_FACE_TRACKING, true));
         alwaysForwardInput.setChecked(settings.getBoolean(ControlProtocol.KEY_ALWAYS_FORWARD, false));
         autostartInput.setChecked(settings.getBoolean(ControlProtocol.KEY_AUTOSTART, false));

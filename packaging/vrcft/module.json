@@ -1,0 +1,12 @@
+{
+    "ModuleId": "0f27405e-39e1-4a78-b1bc-b9ad8c7b69a4",
+    "ModuleName": "ALVR Module (VIVE Face Tracking Bridge)",
+    "AuthorName": "zmerp, curoviyxru, MaverickLong",
+    "ModuleDescription": "The ALVR module with accurate VIVE eye tracking for the VIVE Face Tracking Bridge. Also works with ALVR.",
+    "UsageInstructions": "Uninstall the original ALVR module first. Then use the VIVE Face Tracking Bridge or ALVR as usual.",
+    "ModulePageUrl": "https://github.com/MaverickLong/VIVEFaceTrackingBridge",
+    "DownloadUrl": "@DOWNLOAD_URL@",
+    "DllFileName": "ALVRModule.dll",
+    "Version": "@VERSION@",
+    "LastUpdated": "@LAST_UPDATED@"
+}

@@ -18,7 +18,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  module:
+    # The VRCFaceTracking module (VRCFT-ALVR submodule); VRCFaceTracking is Windows only
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build the VRCFaceTracking module
+        run: dotnet build VRCFT-ALVR/ALVRModule/ALVRModule.csproj -c Release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vrcft-module
+          path: VRCFT-ALVR/ALVRModule/bin/Release/net7.0/ALVRModule.dll
+
   build:
+    needs: module
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -86,6 +107,11 @@ jobs:
           chmod +x client/gradlew
           client/gradlew -p client assembleRelease --no-daemon
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: vrcft-module
+          path: vrcft-module
+
       - name: Package
         id: package
         run: |
@@ -96,8 +122,24 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+          # For VRCFaceTracking's "Install Module from .zip": module.json and the DLL at the root
+          MODULE_ZIP="FTBridge-ALVRModule-$VERSION.zip"
+          if [ "${GITHUB_REF#refs/tags/v}" != "$GITHUB_REF" ]; then
+            DOWNLOAD_URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$MODULE_ZIP"
+          else
+            DOWNLOAD_URL="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          fi
+          MODULE_STAGE=dist/vrcft-module
+          mkdir -p "$MODULE_STAGE"
+          cp vrcft-module/ALVRModule.dll "$MODULE_STAGE/"
+          sed -e "s|@VERSION@|$VERSION|" -e "s|@DOWNLOAD_URL@|$DOWNLOAD_URL|" \
+            -e "s|@LAST_UPDATED@|$(date -u +%Y-%m-%dT%H:%M:%SZ)|" \
+            packaging/vrcft/module.json > "$MODULE_STAGE/module.json"
+          (cd "$MODULE_STAGE" && zip "../$MODULE_ZIP" ALVRModule.dll module.json)
+
           STAGE=dist/FTBridge
           mkdir -p "$STAGE/tools"
+          cp "dist/$MODULE_ZIP" "$STAGE/"
           cp client/app/build/outputs/apk/release/app-release.apk "$STAGE/FTBridge.apk"
           cp client/panel/build/outputs/apk/release/panel-release.apk "$STAGE/FTBridgeSettings.apk"
           cp packaging/windows/Setup.cmd packaging/windows/setup.ps1 packaging/windows/README.txt "$STAGE/"
@@ -129,6 +171,9 @@ jobs:
           1. Download **FTBridge-$VERSION-windows.zip** below and unzip it.
           2. Enable USB debugging on the headset and connect it over USB.
           3. Double-click **Setup.cmd** and follow the messages.
+          4. In VRCFaceTracking, uninstall the original ALVR module, then click
+             **Install Module from .zip** in the Module Registry and pick
+             **FTBridge-ALVRModule-$VERSION.zip** (also inside the Windows zip).
 
           README.txt inside the zip has the full steps and troubleshooting.
           FTBridge-$VERSION.apk (service) and FTBridgeSettings-$VERSION.apk (settings app) are the
@@ -136,5 +181,5 @@ jobs:
           EOF
           gh release create "$GITHUB_REF_NAME" \
             "dist/FTBridge-$VERSION-windows.zip" "dist/FTBridge-$VERSION.apk" \
-            "dist/FTBridgeSettings-$VERSION.apk" \
+            "dist/FTBridgeSettings-$VERSION.apk" "dist/FTBridge-ALVRModule-$VERSION.zip" \
             --title "FT Bridge $GITHUB_REF_NAME" --notes-file dist/notes.md

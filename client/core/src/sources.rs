@@ -198,6 +198,7 @@ impl FaceSources {
         FaceData {
             eyes_combined: None,
             eyes_social,
+            htc_eye_tracker: None,
             face_expressions,
         }
     }

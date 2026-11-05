@@ -4,9 +4,8 @@ FT Bridge - eye and face tracking from a VIVE headset to VRCFaceTracking
 What you need
 -------------
 - A VIVE Focus Vision (eye tracking built in; the face tracker if you have one).
-- On this PC: VRCFaceTracking with the "ALVR" module installed
-  (https://github.com/alvr-org/VRCFT-ALVR), and Virtual Desktop or Steam Link
-  for streaming.
+- On this PC: VRCFaceTracking with our "ALVR" module installed (see Setup),
+  and Virtual Desktop or Steam Link for streaming.
 - Headset and PC on the same Wi-Fi network.
 - A USB cable, once, for the setup.
 
@@ -18,7 +17,11 @@ Setup (once)
 2. Connect the headset to this PC with the USB cable.
 3. Double-click Setup.cmd and follow the messages. When the headset asks
    whether to allow USB debugging, put it on and tap Allow.
-4. Unplug the cable. Done.
+4. Unplug the cable.
+5. Install our ALVR module in VRCFaceTracking. If you have the original ALVR
+   module, uninstall it in the Module Registry and restart VRCFaceTracking
+   first. Then click "Install Module from .zip" in the Module Registry and
+   pick the FTBridge-ALVRModule zip from this folder. Done.
 
 Using it
 --------
@@ -65,6 +68,7 @@ Files
 - Setup.cmd, setup.ps1, provision.ps1: the setup.
 - FTBridge.apk: the headset service, for manual installation (adb install).
 - FTBridgeSettings.apk: the settings app for the headset.
+- FTBridge-ALVRModule-<version>.zip: the VRCFaceTracking module, see Setup.
 - tools\vrcft-cli.exe: diagnostics tool, see the project page.
 
 Project page, source code and documentation:

@@ -2,7 +2,8 @@
 
 A minimal, standalone Android app for VIVE (and other OpenXR) headsets that streams
 eye and face tracking data to a PC running [VRCFaceTracking](https://github.com/benaclejames/VRCFaceTracking)
-with the [VRCFT-ALVR module](https://github.com/alvr-org/VRCFT-ALVR). It runs as a background
+with our fork of the [VRCFT-ALVR module](https://github.com/alvr-org/VRCFT-ALVR), which comes with
+every release. It runs as a background
 service, so it works alongside Virtual Desktop, Steam Link or any other streaming app.
 No PC-side component is required!
 
@@ -27,9 +28,9 @@ The design and the OpenXR face tracking code are derived from [ALVR](https://git
 In essence, any OpenXR headset exposing `XR_HTC_facial_tracking`, `XR_FB_face_tracking2`,
 `XR_FB_eye_tracking_social` or `XR_BD_facial_simulation` running Android 12 or higher should work.
 
-- PC: VRCFaceTracking with the VRCFT-ALVR module installed. The module listens on UDP
-  port 41463 on all interfaces; Windows Firewall must allow inbound UDP to VRCFaceTracking
-  (it normally asks on first start).
+- PC: VRCFaceTracking with our ALVR module installed (`FTBridge-ALVRModule-<version>.zip`,
+  see below). The module listens on UDP port 41463 on all interfaces; Windows Firewall must
+  allow inbound UDP to VRCFaceTracking (it normally asks on first start).
 - Headset and PC on the same network with a good router (you need this for VD anyways).
 
 ## Installing with Windows
@@ -42,7 +43,11 @@ In essence, any OpenXR headset exposing `XR_HTC_facial_tracking`, `XR_FB_face_tr
    Unplug afterwards; the cable is only needed for setup.
    **By default, the bridge runs only with Virtual Desktop. To use Steam Link or another
    streaming app instead (or as well), open FT Bridge Settings on the headset, see below.**
-4. Start VRCFaceTracking on the PC, then use the headset normally. In VRChat the avatar's
+4. Install our ALVR module in VRCFaceTracking. If you have the original ALVR module,
+   uninstall it in the Module Registry and restart VRCFaceTracking first. Then click
+   *Install Module from .zip* in the Module Registry and pick `FTBridge-ALVRModule-<version>.zip`
+   (a separate download on the release page, also inside the Windows zip).
+5. Start VRCFaceTracking on the PC, then use the headset normally. In VRChat the avatar's
    eyes and mouth follow yours through the ALVR module.
 
 ### Changing settings on the headset
@@ -75,9 +80,9 @@ works with the original ALVR and with this toggle off.
    address set at installation time. If the PC's IP changes, enter the new one in FT Bridge
    Settings on the headset, or plug in the headset and re-run `Setup.cmd`.
 3. The mainstream [VRCFT-ALVR](https://github.com/alvr-org/VRCFT-ALVR) has bugs parsing some specific
-   mouth shapekeys. For now I recommend using
-   [this VRCFT-ALVR fork](https://github.com/AzumiYura/VRCFT-ALVR/tree/fix_htcftmapping).
-   (I will be making my own fork and building ready-to-use binaries soon)
+   mouth shapekeys. Our fork, the module zip in every release, includes fixes partially ported
+   from [AzumiYura's fork](https://github.com/AzumiYura/VRCFT-ALVR/tree/fix_htcftmapping) and
+   the SRanipal module.
 4. This is not official VIVE / Virtual Desktop / VRCFT software, there is strictly no affiliation
    with any of the entities.
 
@@ -157,15 +162,22 @@ client\build-native.ps1                                   # Rust core + OpenXR l
 client\gradlew.bat -p client assembleRelease               # -> client\app\build\outputs\apk\release\app-release.apk
                                                            #    and client\panel\build\outputs\apk\release\panel-release.apk
 cargo build --release -p ftbridge_cli                      # optional diagnostics tool
+dotnet build VRCFT-ALVR\ALVRModule\ALVRModule.csproj -c Release   # the VRCFaceTracking module (.NET SDK)
 ```
 
-`cargo test` runs the protocol tests on the host.
+`cargo test` runs the protocol tests on the host. Where VRCFaceTracking is installed, the module
+build also copies `ALVRModule.dll` into `%APPDATA%\VRCFaceTracking\CustomLibs`; remove that copy
+before installing the module zip, or VRCFaceTracking loads the module twice.
 
 ### Releases (CI)
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) builds everything on every
-push and pull request and uploads the package (the zip with `Setup.cmd` plus the two bare
-APKs) as a workflow artifact. A GitHub Release is published only from a version tag:
+push and pull request and uploads the package (the zip with `Setup.cmd`, the two bare APKs and
+the VRCFaceTracking module zip) as a workflow artifact. The module is built on a Windows runner
+and packed with [`packaging/vrcft/module.json`](packaging/vrcft/module.json), whose `ModuleId`
+must never change: it identifies the installed module, and it differs from the official ALVR
+module's on purpose (VRCFaceTracking replaces modules with a registry ID by the registry
+version on start). A GitHub Release is published only from a version tag:
 
 1. Bump the version in `client/gradle.properties` (`ftbridgeVersion`, used by both apps) and
    `Cargo.toml` (`[workspace.package] version`) to the same value, e.g. `1.1.0`.
@@ -232,5 +244,6 @@ client/control    keys and message ids shared by the two apps
 tools/vrcft-cli   protocol diagnostics for the PC
 tools/provision.ps1  one-time adb setup
 packaging/windows    Setup.cmd and the end-user README
+packaging/vrcft      module.json of the VRCFaceTracking module zip
 VRCFT-ALVR        submodule: our fork of the VRCFT-ALVR module (needed for accurate eye tracking)
 ```
